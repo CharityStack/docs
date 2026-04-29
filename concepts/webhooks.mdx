@@ -1,0 +1,101 @@
+---
+title: "Real-time event notifications with CharityStack webhooks"
+description: "Learn how CharityStack webhooks work, which events you can subscribe to, and how to verify the HMAC-SHA256 signature on every incoming payload."
+---
+
+Webhooks let you receive real-time notifications when things happen in CharityStack. When a subscribed event occurs — a new donation, a subscription cancellation, a form update — CharityStack sends an HTTP POST request to a URL you specify, with a JSON payload describing the event. This lets you react immediately: update your CRM, trigger a thank-you email, sync records to an external database, or run any other workflow without polling the API.
+
+## The webhook object
+
+The following fields are returned by `GET /v1/webhooks` and `GET /v1/webhooks/{id}`.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `webhookId` | string | Unique identifier for the webhook |
+| `url` | string | The destination URL that receives event payloads |
+| `events` | array[string] | List of event types this webhook is subscribed to |
+| `status` | string | `ACTIVE`, `DISABLED`, or `DELETED` |
+| `description` | string | Optional label for your reference |
+| `createdAt` | integer | Unix timestamp when the webhook was created |
+| `lastDeliveryAt` | integer | Unix timestamp of the most recent delivery attempt |
+| `successCount` | integer | Total number of successful deliveries |
+| `failureCount` | integer | Total number of failed deliveries |
+
+## Available events
+
+Subscribe to any combination of the events below when you register a webhook.
+
+| Event | Triggered when |
+|-------|---------------|
+| `donation.created` | A new donation is received |
+| `donation.updated` | A donation's status changes |
+| `subscription.created` | A new recurring subscription is started |
+| `subscription.updated` | A subscription is modified (e.g., amount changed) |
+| `subscription.cancelled` | A subscription is cancelled |
+| `contact.created` | A new donor contact is added |
+| `contact.updated` | A contact's information is updated |
+| `form.created` | A new form is created |
+| `form.updated` | A form's configuration changes |
+
+## Registering a webhook
+
+Call `POST /v1/webhooks` with a destination URL and the list of events you want to receive.
+
+```bash
+curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks \
+  -H "Authorization: Bearer cs_live_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://your-server.example.com/charitystack-events",
+    "events": ["donation.created", "subscription.cancelled"],
+    "description": "Production event listener"
+  }'
+```
+
+<Warning>
+  The webhook `secret` is included in the creation response and is **never shown again**. Copy it to a secure location — such as your environment variables or secrets manager — before closing the response. If you lose it, you must delete the webhook and create a new one.
+</Warning>
+
+## Verifying webhook signatures
+
+Every webhook delivery includes three headers that you should use to authenticate the request before processing the payload.
+
+| Header | Value |
+|--------|-------|
+| `X-Webhook-Signature` | `sha256=<hex_digest>` — HMAC-SHA256 signature of the payload |
+| `X-Webhook-Timestamp` | Unix timestamp of when the payload was signed |
+| `X-Webhook-ID` | Unique identifier for this delivery attempt |
+
+CharityStack signs each payload by combining the timestamp and raw request body, then computing an HMAC-SHA256 digest using your webhook secret. To verify a request:
+
+<Steps>
+  <Step title="Extract the headers">
+    Read `X-Webhook-Signature`, `X-Webhook-Timestamp`, and `X-Webhook-ID` from the incoming request.
+  </Step>
+  <Step title="Construct the signed string">
+    Concatenate the timestamp and the raw request body with a `.` separator:
+
+    ```
+    {X-Webhook-Timestamp}.{raw_body}
+    ```
+  </Step>
+  <Step title="Compute the expected signature">
+    Compute an HMAC-SHA256 of the signed string using your webhook secret as the key, then hex-encode the result.
+  </Step>
+  <Step title="Compare signatures">
+    Compare your computed digest to the value in `X-Webhook-Signature` (after stripping the `sha256=` prefix). Use a constant-time comparison to prevent timing attacks. Reject the request if they do not match.
+  </Step>
+  <Step title="Check the timestamp">
+    Optionally reject requests where `X-Webhook-Timestamp` is older than a few minutes to protect against replay attacks.
+  </Step>
+</Steps>
+
+<Tip>
+  The [webhook verification guide](/guides/webhook-verification) includes ready-to-use code examples in multiple languages.
+</Tip>
+
+## API endpoint
+
+<Card title="Create a webhook" icon="bolt" href="/api/webhooks/create">
+  Register a new webhook endpoint and subscribe to one or more event types.
+</Card>

@@ -1,0 +1,98 @@
+---
+title: "PUT /v1/webhooks/{id} — update a webhook"
+sidebarTitle: "Update Webhook"
+description: "Update an existing webhook's URL, subscribed events, status, or description without regenerating the signing secret."
+---
+
+The Update Webhook endpoint lets you modify a webhook subscription without deleting and recreating it. This preserves the HMAC signing secret, so receivers don't need to update their verification logic.
+
+Only fields included in the request body are updated. Omitted fields remain unchanged.
+
+## Endpoint
+
+```text
+PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks/{id}
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The webhook ID to update.
+</ParamField>
+
+## Request body
+
+<ParamField body="url" type="string">
+  New HTTPS URL for webhook delivery. HTTP is allowed in development environments only.
+</ParamField>
+
+<ParamField body="events" type="string[]">
+  Updated list of event types to subscribe to. Replaces the existing list entirely.
+
+  Supported events: `donation.created`, `donation.updated`, `subscription.created`, `subscription.updated`, `subscription.cancelled`, `contact.created`, `contact.updated`, `form.created`, `form.updated`
+</ParamField>
+
+<ParamField body="status" type="string">
+  Set to `ACTIVE` to resume delivery or `DISABLED` to pause without deleting. This is useful for temporarily muting a webhook during maintenance.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Updated description for the webhook.
+</ParamField>
+
+## Response
+
+<ResponseField name="message" type="string" required>
+  Confirmation message.
+</ResponseField>
+
+<ResponseField name="webhook" type="object" required>
+  The updated webhook object. Does **not** include the signing secret.
+</ResponseField>
+
+## Example
+
+```bash cURL
+curl -X PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks/wh_abc123 \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com/webhooks/v2",
+    "events": ["donation.created", "donation.updated", "subscription.created"]
+  }'
+```
+
+**200 response**
+
+```json
+{
+  "message": "Webhook updated successfully",
+  "webhook": {
+    "webhookId": "wh_abc123",
+    "url": "https://example.com/webhooks/v2",
+    "events": ["donation.created", "donation.updated", "subscription.created"],
+    "status": "ACTIVE",
+    "description": "Production webhook",
+    "createdAt": 1714300000,
+    "lastDeliveryAt": 1714350000,
+    "successCount": 42,
+    "failureCount": 0
+  }
+}
+```
+
+## Status codes
+
+| Code | Description |
+| --- | --- |
+| 200 | Webhook updated successfully |
+| 400 | Invalid request (bad URL, unsupported events, no valid fields) |
+| 401 | Missing or invalid API key |
+| 403 | Webhook belongs to a different merchant |
+| 404 | Webhook not found |

@@ -1,0 +1,88 @@
+---
+title: "Recurring subscription management with CharityStack"
+description: "Learn how CharityStack models recurring donations as subscriptions, what fields each record contains, and how to list, retrieve, and update them via the API."
+---
+
+A subscription represents a recurring donation that charges a donor automatically on a set schedule — daily, weekly, monthly, or annually. When you integrate with the subscriptions API, you can build features like donor retention dashboards, automated cancellation flows, or dynamic giving-amount adjustments without requiring donors to update their information manually.
+
+## The subscription object
+
+The following fields are returned by `GET /v1/subscriptions` and `GET /v1/subscriptions/{id}`.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique identifier for the subscription |
+| `status` | string | Current subscription status (see below) |
+| `amount` | number | Recurring charge amount in dollars |
+| `frequency` | string | Billing cadence (see below) |
+| `nextBillingDate` | string | ISO 8601 date of the next scheduled charge |
+| `lastBillingDate` | string | ISO 8601 date of the most recent successful charge |
+| `endBillingDate` | string | ISO 8601 date when the subscription is scheduled to end |
+| `coveredFee` | boolean | Whether the donor opted to cover processing fees |
+
+### Status values
+
+| Value | Meaning |
+|-------|---------|
+| `ACTIVE` | Subscription is running and will charge on schedule |
+| `CANCELLED` | Subscription has been cancelled and will not charge again |
+
+### Frequency values
+
+| Value | Billing cadence |
+|-------|----------------|
+| `DAILY` | Charged every day |
+| `WEEKLY` | Charged every week |
+| `MONTHLY` | Charged every month |
+| `ANNUALLY` | Charged once per year |
+
+<Note>
+  Each successful subscription charge creates a corresponding payment record. You can cross-reference subscriptions and payments using the donor's email address.
+</Note>
+
+## What you can do
+
+The subscriptions API supports three categories of operations:
+
+<CardGroup cols={3}>
+  <Card title="List subscriptions" icon="list" href="/api/subscriptions/list">
+    Retrieve all subscriptions for your account, optionally filtered by status.
+  </Card>
+  <Card title="Get a subscription" icon="magnifying-glass" href="/api/subscriptions/get">
+    Fetch a single subscription record by its ID.
+  </Card>
+  <Card title="Update a subscription" icon="pen" href="/api/subscriptions/update">
+    Cancel a subscription or change the recurring amount.
+  </Card>
+</CardGroup>
+
+## Updating subscriptions
+
+You can modify an active subscription in two ways: cancel it or change the recurring amount. Both operations use `PUT /v1/subscriptions/{id}` with a JSON body.
+
+<Tabs>
+  <Tab title="Cancel a subscription">
+    Set `status` to `CANCELLED` to stop future charges immediately.
+
+    ```bash
+    curl -X PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/subscriptions/sub_123 \
+      -H "Authorization: Bearer cs_live_your_key_here" \
+      -H "Content-Type: application/json" \
+      -d '{"status": "CANCELLED"}'
+    ```
+  </Tab>
+  <Tab title="Change the amount">
+    Pass a new positive `amount` to update the recurring charge going forward.
+
+    ```bash
+    curl -X PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/subscriptions/sub_123 \
+      -H "Authorization: Bearer cs_live_your_key_here" \
+      -H "Content-Type: application/json" \
+      -d '{"amount": 50.00}'
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  Cancellation is immediate and irreversible through the API. The subscription `status` will change to `CANCELLED` and no further charges will be made. To restart a cancelled subscription, the donor must re-enroll through a donation form.
+</Warning>

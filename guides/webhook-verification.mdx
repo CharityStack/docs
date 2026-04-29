@@ -1,0 +1,221 @@
+---
+title: "Verify CharityStack webhook signatures in your server"
+description: "Protect your webhook endpoint by verifying HMAC-SHA256 signatures and timestamps on every incoming CharityStack event before processing it."
+---
+
+When CharityStack delivers a webhook event to your server, it signs the request using your webhook secret. Verifying this signature before processing the payload confirms two things: the request genuinely came from CharityStack, and the payload was not modified in transit. Skipping verification leaves your endpoint open to spoofed or replayed requests.
+
+## Headers sent with every webhook
+
+Each webhook delivery includes three security headers:
+
+| Header | Description |
+|---|---|
+| `X-Webhook-Signature` | HMAC-SHA256 signature in the format `sha256=<hex_digest>` |
+| `X-Webhook-Timestamp` | Unix timestamp (seconds) of when the request was signed |
+| `X-Webhook-ID` | Unique delivery identifier for this event |
+
+## Verification algorithm
+
+To verify the signature, you reconstruct the signed string from the timestamp and raw request body, compute the expected HMAC, and compare it to the value in `X-Webhook-Signature`.
+
+<Steps>
+  <Step title="Read the headers">
+    Extract `X-Webhook-Signature` and `X-Webhook-Timestamp` from the incoming request headers.
+  </Step>
+
+  <Step title="Build the signed string">
+    Concatenate the timestamp and the raw request body separated by a period:
+
+    ```
+    signed_string = timestamp + "." + raw_body
+    ```
+
+    Use the **raw** request body bytes — do not parse JSON first. Parsing and re-serializing the body can alter its byte representation and cause the signature check to fail.
+  </Step>
+
+  <Step title="Compute the expected signature">
+    Compute an HMAC-SHA256 of the signed string using your webhook secret as the key, then hex-encode the result.
+  </Step>
+
+  <Step title="Compare signatures">
+    Prefix your computed digest with `sha256=` and compare it to the value of `X-Webhook-Signature`. Use a constant-time comparison to prevent timing attacks.
+  </Step>
+
+  <Step title="Check the timestamp">
+    Verify that the timestamp is within 5 minutes of your server's current time. Reject requests with timestamps that are too old to protect against replay attacks.
+  </Step>
+</Steps>
+
+<Warning>
+  Your webhook secret is shown **only once** when you create the webhook. Store it in an environment variable or secrets manager immediately — you cannot retrieve it again from the API.
+</Warning>
+
+## Code examples
+
+<CodeGroup>
+
+```python verify_webhook.py
+import hashlib
+import hmac
+import time
+from flask import Flask, request, abort
+
+app = Flask(__name__)
+
+WEBHOOK_SECRET = "your_webhook_secret_here"  # From environment variable
+
+
+def verify_signature(raw_body: bytes, timestamp: str, signature: str) -> bool:
+    # Reject requests older than 5 minutes
+    current_time = int(time.time())
+    if abs(current_time - int(timestamp)) > 300:
+        return False
+
+    # Build signed string: timestamp + "." + raw body
+    signed_string = f"{timestamp}.".encode() + raw_body
+
+    # Compute expected HMAC-SHA256 signature
+    expected = "sha256=" + hmac.new(
+        WEBHOOK_SECRET.encode(),
+        signed_string,
+        hashlib.sha256,
+    ).hexdigest()
+
+    # Constant-time comparison to prevent timing attacks
+    return hmac.compare_digest(expected, signature)
+
+
+@app.route("/webhook", methods=["POST"])
+def handle_webhook():
+    signature = request.headers.get("X-Webhook-Signature", "")
+    timestamp = request.headers.get("X-Webhook-Timestamp", "")
+    raw_body = request.get_data()  # Raw bytes before JSON parsing
+
+    if not verify_signature(raw_body, timestamp, signature):
+        abort(401, "Invalid webhook signature")
+
+    event = request.get_json()
+    print(f"Received event: {event['type']}")
+    # Process the event here...
+
+    return "", 200
+```
+
+```javascript verifyWebhook.js
+const crypto = require("crypto");
+const express = require("express");
+
+const app = express();
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET; // From environment variable
+
+// Use raw body parser so we can verify the signature
+app.use(
+  express.raw({ type: "application/json" })
+);
+
+function verifySignature(rawBody, timestamp, signature) {
+  // Reject requests older than 5 minutes
+  const currentTime = Math.floor(Date.now() / 1000);
+  if (Math.abs(currentTime - parseInt(timestamp, 10)) > 300) {
+    return false;
+  }
+
+  // Build signed string: timestamp + "." + raw body
+  const signedString = `${timestamp}.${rawBody.toString()}`;
+
+  // Compute expected HMAC-SHA256 signature
+  const expected =
+    "sha256=" +
+    crypto
+      .createHmac("sha256", WEBHOOK_SECRET)
+      .update(signedString)
+      .digest("hex");
+
+  // Constant-time comparison to prevent timing attacks
+  return crypto.timingSafeEqual(
+    Buffer.from(expected),
+    Buffer.from(signature)
+  );
+}
+
+app.post("/webhook", (req, res) => {
+  const signature = req.headers["x-webhook-signature"] || "";
+  const timestamp = req.headers["x-webhook-timestamp"] || "";
+  const rawBody = req.body; // Raw Buffer from express.raw()
+
+  if (!verifySignature(rawBody, timestamp, signature)) {
+    return res.status(401).json({ error: "Invalid webhook signature" });
+  }
+
+  const event = JSON.parse(rawBody);
+  console.log(`Received event: ${event.type}`);
+  // Process the event here...
+
+  res.status(200).send();
+});
+```
+
+```php verify_webhook.php
+<?php
+
+define('WEBHOOK_SECRET', getenv('WEBHOOK_SECRET'));
+define('MAX_TIMESTAMP_DIFF', 300); // 5 minutes in seconds
+
+function verifySignature(string $rawBody, string $timestamp, string $signature): bool
+{
+    // Reject requests older than 5 minutes
+    $currentTime = time();
+    if (abs($currentTime - (int) $timestamp) > MAX_TIMESTAMP_DIFF) {
+        return false;
+    }
+
+    // Build signed string: timestamp + "." + raw body
+    $signedString = $timestamp . '.' . $rawBody;
+
+    // Compute expected HMAC-SHA256 signature
+    $expected = 'sha256=' . hash_hmac('sha256', $signedString, WEBHOOK_SECRET);
+
+    // Constant-time comparison to prevent timing attacks
+    return hash_equals($expected, $signature);
+}
+
+// Read raw request body before any parsing
+$rawBody = file_get_contents('php://input');
+$signature = $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'] ?? '';
+$timestamp = $_SERVER['HTTP_X_WEBHOOK_TIMESTAMP'] ?? '';
+
+if (!verifySignature($rawBody, $timestamp, $signature)) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Invalid webhook signature']);
+    exit;
+}
+
+$event = json_decode($rawBody, true);
+error_log('Received event: ' . $event['type']);
+// Process the event here...
+
+http_response_code(200);
+```
+
+</CodeGroup>
+
+## Security best practices
+
+<AccordionGroup>
+  <Accordion title="Always use the raw request body">
+    Compute the signature against the raw bytes of the request body, not a parsed and re-serialized version. JSON serializers can reorder keys or change whitespace, which will break signature verification.
+  </Accordion>
+
+  <Accordion title="Validate the timestamp to prevent replay attacks">
+    An attacker who intercepts a valid signed request could resubmit it later. Rejecting requests with timestamps older than 5 minutes eliminates this risk without affecting legitimate deliveries.
+  </Accordion>
+
+  <Accordion title="Use constant-time comparison">
+    Use `hmac.compare_digest` (Python), `crypto.timingSafeEqual` (Node.js), or `hash_equals` (PHP) instead of `==` when comparing signatures. Standard string comparison can leak timing information that helps an attacker forge signatures.
+  </Accordion>
+
+  <Accordion title="Store your webhook secret securely">
+    Keep your webhook secret in an environment variable or a secrets manager. Never hardcode it in source code or commit it to version control.
+  </Accordion>
+</AccordionGroup>

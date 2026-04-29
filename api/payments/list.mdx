@@ -1,0 +1,137 @@
+---
+title: "GET /v1/payments — list payment records"
+sidebarTitle: "List Payments"
+description: "Retrieve a paginated list of payment records for your merchant account, including one-time gifts and recurring charges processed through CharityStack."
+---
+
+The `GET /v1/payments` endpoint returns payment records associated with your merchant account. Results are sorted by date descending and support cursor-based pagination so you can retrieve large datasets incrementally. This endpoint requires the `donations:read` permission on your API key.
+
+<Note>
+  The `/v1/payments` endpoint replaces the deprecated `/v1/donations` endpoint. If you are still using `/v1/donations`, migrate before the **2026-07-01** sunset date.
+</Note>
+
+## Request
+
+<ParamField query="limit" type="integer" default="50">
+  Maximum number of payment records to return per page. Accepts values between 1 and 100.
+</ParamField>
+
+<ParamField query="lastEvaluatedKey" type="string">
+  Pagination cursor returned by a previous response. Pass this value to retrieve the next page of results. Omit on the first request.
+</ParamField>
+
+## Response
+
+<ResponseField name="payments" type="Payment[]" required>
+  Array of payment objects for this page of results.
+
+  <Expandable title="Payment object properties">
+    <ResponseField name="paymentID" type="string" required>
+      Unique identifier for the payment.
+    </ResponseField>
+    <ResponseField name="email" type="string" required>
+      Email address of the payer.
+    </ResponseField>
+    <ResponseField name="firstName" type="string" required>
+      Payer's first name.
+    </ResponseField>
+    <ResponseField name="lastName" type="string" required>
+      Payer's last name.
+    </ResponseField>
+    <ResponseField name="amount" type="number" required>
+      Payment amount in US dollars.
+    </ResponseField>
+    <ResponseField name="currency" type="string" required>
+      ISO 4217 currency code. Defaults to `USD`.
+    </ResponseField>
+    <ResponseField name="status" type="string" required>
+      Payment status. One of: `COMPLETED`, `PENDING`, `FAILED`, `REFUNDED`.
+    </ResponseField>
+    <ResponseField name="fund" type="string" required>
+      Name of the fund designated by the payer.
+    </ResponseField>
+    <ResponseField name="form" type="string" required>
+      Name of the donation form used to collect this payment.
+    </ResponseField>
+    <ResponseField name="frequency" type="string" required>
+      Giving frequency. One of: `ONE_TIME`, `DAILY`, `WEEKLY`, `MONTHLY`, `ANNUALLY`.
+    </ResponseField>
+    <ResponseField name="date" type="string" required>
+      ISO 8601 timestamp of when the payment was made.
+    </ResponseField>
+    <ResponseField name="paymentMethod" type="string" required>
+      Payment method used, such as `card` or `bank`.
+    </ResponseField>
+    <ResponseField name="coverFees" type="boolean" required>
+      Whether the payer elected to cover processing fees.
+    </ResponseField>
+    <ResponseField name="anonymous" type="boolean" required>
+      Whether the payer requested anonymity.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="count" type="integer" required>
+  Number of payment records returned in this response.
+</ResponseField>
+
+<ResponseField name="hasMore" type="boolean" required>
+  `true` if additional pages of results exist beyond this response.
+</ResponseField>
+
+<ResponseField name="lastEvaluatedKey" type="string">
+  Pagination cursor for the next page. Pass this as the `lastEvaluatedKey` query parameter on your next request. Absent when `hasMore` is `false`.
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/payments?limit=2 \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+</CodeGroup>
+
+```json Response
+{
+  "payments": [
+    {
+      "paymentID": "pay_01HXYZ1234ABCDEF",
+      "email": "jane.doe@example.com",
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "amount": 100.00,
+      "currency": "USD",
+      "status": "COMPLETED",
+      "fund": "General Fund",
+      "form": "Annual Appeal",
+      "frequency": "ONE_TIME",
+      "date": "2025-04-15T14:32:00Z",
+      "paymentMethod": "card",
+      "coverFees": true,
+      "anonymous": false
+    },
+    {
+      "paymentID": "pay_01HXYZ5678GHIJKL",
+      "email": "john.smith@example.com",
+      "firstName": "John",
+      "lastName": "Smith",
+      "amount": 25.00,
+      "currency": "USD",
+      "status": "COMPLETED",
+      "fund": "Scholarship Fund",
+      "form": "Monthly Giving",
+      "frequency": "MONTHLY",
+      "date": "2025-04-14T09:10:00Z",
+      "paymentMethod": "bank",
+      "coverFees": false,
+      "anonymous": false
+    }
+  ],
+  "count": 2,
+  "hasMore": true,
+  "lastEvaluatedKey": "eyJwYXltZW50SUQiOiJwYXlfMDFIWFlaNTY3OEdISUpLTCJ9"
+}
+```

@@ -1,0 +1,127 @@
+---
+title: "GET /v1/analytics/api-metrics — view API usage metrics"
+sidebarTitle: "API Metrics"
+description: "Retrieve a paginated log of API requests made with your key, including endpoint, HTTP method, status code, and response time for each call."
+---
+
+The API Metrics endpoint returns a record of every API request made under your merchant account. Each entry captures the endpoint called, the HTTP method, the response status code, and how long the request took. This data is useful for monitoring integration health, identifying slow endpoints, and auditing usage patterns over time.
+
+<Note>
+  This endpoint requires the `analytics:read` permission on your API key.
+</Note>
+
+## Request
+
+```bash
+GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/analytics/api-metrics
+```
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+### Query parameters
+
+<ParamField query="limit" type="integer" default="50">
+  Number of metric records to return per page. Maximum `100`.
+</ParamField>
+
+<ParamField query="lastEvaluatedKey" type="string">
+  Pagination cursor returned by the previous response. Pass this value to retrieve the next page of results.
+</ParamField>
+
+## Response
+
+### 200 — success
+
+<ResponseField name="metrics" type="array">
+  List of API request metric records.
+
+  <Expandable title="ApiMetric object properties">
+    <ResponseField name="metricId" type="string">
+      Unique identifier for this metric record.
+    </ResponseField>
+    <ResponseField name="endpoint" type="string">
+      The API path that was called (e.g., `/v1/payments`).
+    </ResponseField>
+    <ResponseField name="method" type="string">
+      HTTP method used for the request: `GET`, `POST`, `PUT`, or `DELETE`.
+    </ResponseField>
+    <ResponseField name="statusCode" type="integer">
+      HTTP response status code returned by the API.
+    </ResponseField>
+    <ResponseField name="responseTime" type="integer">
+      Time in milliseconds the API took to process and respond to the request.
+    </ResponseField>
+    <ResponseField name="timestamp" type="integer">
+      Unix timestamp (seconds) when the request was made.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Number of metric records returned in this page.
+</ResponseField>
+
+<ResponseField name="hasMore" type="boolean">
+  `true` if additional pages of results are available.
+</ResponseField>
+
+<ResponseField name="lastEvaluatedKey" type="string">
+  Pagination cursor to pass as `lastEvaluatedKey` in your next request. `null` when you have reached the last page.
+</ResponseField>
+
+### 401 — unauthorized
+
+Returned when your API key is missing, invalid, or lacks the `analytics:read` permission.
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/analytics/api-metrics?limit=10" \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+</CodeGroup>
+
+```json Sample response (200)
+{
+  "metrics": [
+    {
+      "metricId": "met_07np9qf4tvyi3za8guvj1bkm2e",
+      "endpoint": "/v1/payments",
+      "method": "GET",
+      "statusCode": 200,
+      "responseTime": 87,
+      "timestamp": 1714090200
+    },
+    {
+      "metricId": "met_08oq0rg5uwzj4ab9hvwk2cln3f",
+      "endpoint": "/v1/webhooks",
+      "method": "POST",
+      "statusCode": 201,
+      "responseTime": 134,
+      "timestamp": 1714090150
+    },
+    {
+      "metricId": "met_09pr1sh6vxak5bc0iwxl3dmo4g",
+      "endpoint": "/v1/subscriptions/sub_abc123",
+      "method": "PUT",
+      "statusCode": 404,
+      "responseTime": 42,
+      "timestamp": 1714090100
+    }
+  ],
+  "count": 3,
+  "hasMore": true,
+  "lastEvaluatedKey": "eyJtZXRyaWNJZCI6Im1ldF8wOXByMXNoNnZ4YWs1YmMwaXd4bDNkbW80ZyJ9"
+}
+```
+
+<Tip>
+  Use `lastEvaluatedKey` from each response as the `lastEvaluatedKey` query parameter in your next request to paginate through all metric records. See the [pagination guide](/guides/pagination) for a full walkthrough.
+</Tip>

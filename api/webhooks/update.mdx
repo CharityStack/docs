@@ -1,0 +1,111 @@
+---
+title: "PUT /v1/webhooks/{id} — update a webhook configuration"
+sidebarTitle: "Update Webhook"
+description: "Modify an existing webhook's destination URL, subscribed event types, description, or status without re-registering and generating a new secret."
+---
+
+The Update Webhook endpoint lets you change any combination of fields on an existing webhook without needing to delete and re-create it. Updating does not rotate the signing secret. Only include the fields you want to change — unspecified fields remain unchanged. This endpoint requires the `webhooks:write` permission.
+
+## Request
+
+```bash
+PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks/{id}
+```
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `application/json`.
+</ParamField>
+
+### Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the webhook to update (e.g., `wh_01hx4kz9mntd8vr2bpqe5ycf3a`).
+</ParamField>
+
+### Request body
+
+All body fields are optional. Send only the fields you want to change.
+
+<ParamField body="url" type="string">
+  New destination HTTPS URL for event deliveries.
+</ParamField>
+
+<ParamField body="events" type="array[string]">
+  Replacement list of event types to subscribe to. This fully replaces the current list — include all events you want, not just the new ones.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Updated human-readable description for this webhook.
+</ParamField>
+
+<ParamField body="status" type="string">
+  New status for the webhook. Accepted values: `ACTIVE` or `DISABLED`. Setting to `DISABLED` stops event delivery without deleting the webhook.
+</ParamField>
+
+## Response
+
+### 200 — success
+
+Returns the full updated webhook object. See [List Webhooks](/api/webhooks/list) for a description of all fields.
+
+### 400 — bad request
+
+Returned when the request body is invalid — for example, if `url` is not a valid HTTPS URL or `events` is an empty array.
+
+### 403 — forbidden
+
+Returned when the webhook exists but belongs to a different merchant account.
+
+### 404 — not found
+
+Returned when no webhook with the given `id` exists under your merchant account.
+
+## Examples
+
+<CodeGroup>
+
+```bash Disable a webhook
+curl -X PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks/wh_01hx4kz9mntd8vr2bpqe5ycf3a \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "DISABLED"}'
+```
+
+```bash Update destination URL
+curl -X PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks/wh_01hx4kz9mntd8vr2bpqe5ycf3a \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://newdomain.yourapp.com/webhooks/charitystack"
+  }'
+```
+
+</CodeGroup>
+
+```json Sample response (200)
+{
+  "webhookId": "wh_01hx4kz9mntd8vr2bpqe5ycf3a",
+  "url": "https://newdomain.yourapp.com/webhooks/charitystack",
+  "events": [
+    "donation.created",
+    "subscription.created",
+    "subscription.cancelled"
+  ],
+  "status": "ACTIVE",
+  "description": "Production webhook for donation notifications",
+  "createdAt": 1714003200,
+  "lastDeliveryAt": 1714089600,
+  "successCount": 142,
+  "failureCount": 3
+}
+```
+
+<Note>
+  To re-enable a previously disabled webhook, send `{"status": "ACTIVE"}`. Event deliveries resume immediately for new events — past events that occurred while the webhook was disabled are not replayed.
+</Note>

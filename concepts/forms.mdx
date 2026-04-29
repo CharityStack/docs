@@ -1,0 +1,160 @@
+---
+title: "Building donation forms with the CharityStack API"
+description: "Learn how CharityStack models fundraising and event forms, what fields are available, and how to create and configure forms programmatically via the API."
+---
+
+CharityStack forms are embeddable donation experiences hosted at `charitystack.com/donate/{formID}`. You can share the link directly, embed the form on your website, or use it as the checkout flow for a fundraising campaign or ticketed event. The forms API lets you create and manage these forms programmatically — useful for organizations that run many campaigns, need to automate form setup, or want to integrate form creation into a broader CRM or event management workflow.
+
+## The form object
+
+The list endpoint (`GET /v1/forms`) returns a **summary** of each form. Use `GET /v1/forms/{id}` to retrieve the full configuration.
+
+### Summary fields (list endpoint)
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `formID` | string | Unique identifier for the form |
+| `formUrl` | string | Live URL where donors can access the form (`charitystack.com/donate/{formID}`) |
+| `title` | string | Display name shown at the top of the form |
+| `description` | string | Supporting text shown below the title |
+| `formType` | string | Internal form type (see mapping below) |
+| `funds` | array\[string\] | List of fund names donors can designate their gift to |
+| `frequencies` | array\[string\] | Donation frequencies available on the form |
+| `color` | string | Hex color used for form styling |
+| `headerImage` | string | URL to the form's header image |
+| `active` | boolean | Whether the form is currently accepting donations |
+| `goal` | number | Fundraising goal amount (when fundraising bar is enabled) |
+| `eventDate` | string | Event date (event forms only) |
+| `startTime` | string | Event start time (event forms only) |
+| `endTime` | string | Event end time (event forms only) |
+| `location` | string | Event location (event forms only) |
+
+### Full form object (get-by-id endpoint)
+
+The `GET /v1/forms/{id}` response includes all summary fields plus the complete configuration: amount arrays, default amounts, giving levels, sponsorship groups, tickets, promo codes, custom inputs, FAQs, all enable toggles, custom email settings, and event details. See the [Get Form](/api/forms/get) endpoint reference for the full schema.
+
+## Form types
+
+CharityStack supports two top-level form categories, with additional sub-types for fundraising forms.
+
+<CardGroup cols={2}>
+  <Card title="Fundraising forms" icon="hand-holding-heart">
+    Standard donation forms used for general fundraising campaigns. Supports three amount presentation styles:
+
+    - **`standard`** — Free-form amount entry with suggested amounts
+    - **`giving_level`** — Named tiers (e.g., Bronze, Silver, Gold donor)
+    - **`sponsorship`** — Grouped sponsorship packages with fixed prices
+  </Card>
+
+  <Card title="Event forms" icon="calendar">
+    Ticketed event registration forms. Supports ticket types (individual and group), promo codes, and event date/time/location details. At least one ticket is required.
+  </Card>
+</CardGroup>
+
+### Form type mapping
+
+When you create a form, you pass a friendly `formType` and `amountType`. The API stores and returns a legacy internal value:
+
+| Create input (`formType`) | Create input (`amountType`) | Response value (`formType`) |
+| --- | --- | --- |
+| `fundraising` | `standard` | `EMBED_FORM` |
+| `fundraising` | `giving_level` | `CROWDFUNDING_FORM` |
+| `fundraising` | `sponsorship` | `PRODUCT` |
+| `event` | _(ignored)_ | `EVENT` |
+
+<Note>
+  The response values (`EMBED_FORM`, `CROWDFUNDING_FORM`, `PRODUCT`) are legacy internal names. This naming mismatch is expected — the create endpoint accepts the friendly names, and the GET endpoints return the stored database values.
+</Note>
+
+## Key features
+
+Forms support a rich set of optional features you can enable when creating or updating a form.
+
+| Feature | Description |
+| --- | --- |
+| Giving levels | Named donation tiers with fixed amounts and benefit descriptions |
+| Sponsorship groups | Grouped packages for corporate or major donors |
+| Event tickets | Individual and group ticket types with optional quantity limits |
+| Promo codes | Percentage or fixed-amount discount codes tied to specific tickets |
+| Custom inputs | Additional form fields (short text, long text, dropdowns, multi-select) |
+| FAQs | Accordion-style FAQ section displayed on the form |
+| Fundraising bar | Progress bar toward a stated goal amount |
+| Donor contact list | Display of supporters on the form page |
+
+## Creating a form
+
+When you call `POST /v1/forms`, two fields are always required. All other fields are optional and fall back to sensible defaults.
+
+| Field | Required | Default | Notes |
+| --- | --- | --- | --- |
+| `title` | Yes | — | Displayed at the top of the form |
+| `funds` | Yes | — | At least one fund name is required |
+| `formType` | No | `fundraising` | Use `event` for ticketed event forms |
+| `amountType` | No | `standard` | For fundraising: `standard`, `giving_level`, or `sponsorship` |
+| `frequencies` | Conditional | `["ONE_TIME"]` | Required for fundraising forms; defaults to `ONE_TIME` for event forms |
+| `color` | No | `#3B82F6` | Must be valid hex format (`#XXXXXX`) |
+| `active` | No | `true` | Set to `false` to create the form in a draft state |
+
+### Conditional requirements
+
+<Note>
+  - When `enableFundraisingBar` is `true`, you must also provide a `goal` value greater than zero.
+  - When `enableCustomEmail` is `true`, the fields `replyToAddress`, `emailSubject`, and `customMessage` are all required.
+  - When `enableTimeAndLocation` is `true`, `eventDate` and `startTime` are required. `endTime`, `location`, `eventDetails`, and `timeZone` are optional.
+  - When `amountType` is `giving_level`, you must provide at least one item in `givingLevels`.
+  - When `amountType` is `sponsorship`, you must provide at least one group in `sponsorshipGroups` with at least one option.
+  - Event forms require at least one ticket in the `tickets` array.
+</Note>
+
+### Validation rules
+
+Amount values (`oneTimeAmounts`, `monthlyAmounts`, etc.) must be between $1 and $1,000,000. Descriptions are limited to 650 characters. Dropdown-type custom inputs (`single_select`, `multi_select`) require at least 2 options. Ticket names must be unique within a form, and GROUP tickets require a `groupSize` greater than 1.
+
+### Example: create a basic fundraising form
+
+```bash
+curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms \
+  -H "Authorization: Bearer cs_live_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Annual Fund 2025",
+    "funds": ["General Fund", "Education Fund"],
+    "frequencies": ["ONE_TIME", "MONTHLY"],
+    "color": "#10B981"
+  }'
+```
+
+A successful response includes the new form's ID, its live URL, and an embed snippet:
+
+```json
+{
+  "formID": "form_abc123",
+  "formUrl": "https://charitystack.com/donate/form_abc123",
+  "embedHTML": "<iframe src=\"...\"></iframe>",
+  "message": "Form created successfully"
+}
+```
+
+## API endpoints
+
+<CardGroup cols={2}>
+  <Card title="Create a form" icon="plus" href="/api/forms/create">
+    Create a new fundraising or event form with full configuration options.
+  </Card>
+
+  <Card title="List forms" icon="list" href="/api/forms/list">
+    Retrieve all forms for your account with pagination support.
+  </Card>
+
+  <Card title="Get a form" icon="file" href="/api/forms/get">
+    Retrieve the full configuration for a single form by ID.
+  </Card>
+
+  <Card title="Update a form" icon="pen" href="/api/forms/update">
+    Update an existing form's configuration. Partial updates supported.
+  </Card>
+
+  <Card title="Delete a form" icon="trash" href="/api/forms/delete">
+    Soft-delete a form. Returns 410 Gone on subsequent access.
+  </Card>
+</CardGroup>

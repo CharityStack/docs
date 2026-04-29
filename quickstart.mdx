@@ -1,0 +1,120 @@
+---
+title: "Get started with the CharityStack API"
+description: "Provision an API key, send your first authenticated request to list payments, and learn how to read the response and paginate through results."
+---
+
+This guide walks you through making your first request to the CharityStack API. By the end you will have retrieved a list of live payment records from your merchant account and understand the structure of the response.
+
+## Before you begin
+
+You need an active CharityStack merchant account and an API key provisioned by your account administrator. If you do not have a key yet, see [Authentication](/authentication) for how keys are issued and what permissions they grant.
+
+## Step-by-step
+
+<Steps>
+  <Step title="Confirm your API key">
+    Your API key starts with the `cs_live_` prefix. It was shown to you exactly once when it was created. If you no longer have it, ask your administrator to provision a new one — issuing a new key automatically revokes the previous one.
+
+    Store your key in an environment variable so you never have to hard-code it:
+
+    ```bash
+    export CHARITYSTACK_API_KEY="cs_live_your_key_here"
+    ```
+  </Step>
+
+  <Step title="Make your first request">
+    Call `GET /v1/payments` to retrieve a list of recent payments from your account. Pass your API key in the `Authorization` header as a Bearer token:
+
+    ```bash
+    curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/payments \
+      -H "Authorization: Bearer $CHARITYSTACK_API_KEY"
+    ```
+
+    The endpoint returns up to 50 results by default. You can request fewer with the `limit` query parameter (maximum is 100):
+
+    ```bash
+    curl "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/payments?limit=10" \
+      -H "Authorization: Bearer $CHARITYSTACK_API_KEY"
+    ```
+  </Step>
+
+  <Step title="Interpret the response">
+    A successful response returns a JSON object containing an array of payment records and pagination metadata:
+
+    ```json
+    {
+      "payments": [
+        {
+          "paymentID": "pay_a1b2c3d4e5f6",
+          "email": "jane.doe@example.org",
+          "firstName": "Jane",
+          "lastName": "Doe",
+          "amount": 100.00,
+          "currency": "USD",
+          "status": "COMPLETED",
+          "fund": "General Fund",
+          "form": "Year-End Campaign",
+          "frequency": "ONE_TIME",
+          "date": "2026-04-15T18:32:00Z",
+          "paymentMethod": "card",
+          "coverFees": false,
+          "anonymous": false
+        }
+      ],
+      "count": 1,
+      "hasMore": true,
+      "lastEvaluatedKey": "eyJwYXltZW50SUQiOiJwYXlfYTFiMmMzZDRlNWY2In0="
+    }
+    ```
+
+    Each entry in `payments` is a [payment object](/api/payments/list). The key fields to understand:
+
+    | Field | Description |
+    |-------|-------------|
+    | `paymentID` | Unique identifier for this payment |
+    | `amount` | Payment amount in US dollars |
+    | `status` | `COMPLETED`, `PENDING`, `FAILED`, or `REFUNDED` |
+    | `frequency` | `ONE_TIME`, `MONTHLY`, `ANNUALLY`, etc. |
+    | `date` | ISO 8601 timestamp of the payment |
+  </Step>
+
+  <Step title="Paginate through results">
+    When `hasMore` is `true`, there are additional records beyond the current page. Pass the `lastEvaluatedKey` value from the response as a query parameter to fetch the next page:
+
+    ```bash
+    curl "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/payments?lastEvaluatedKey=eyJwYXltZW50SUQiOiJwYXlfYTFiMmMzZDRlNWY2In0=" \
+      -H "Authorization: Bearer $CHARITYSTACK_API_KEY"
+    ```
+
+    Repeat this until `hasMore` is `false` or the key is absent, indicating you have reached the last page.
+  </Step>
+</Steps>
+
+## Check API health
+
+The `/health` endpoint requires no authentication and confirms the API is operational:
+
+```bash
+curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/health
+```
+
+```json
+{
+  "status": "healthy"
+}
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Understand API key permissions, the Bearer token format, and rate limit headers.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/payments/list">
+    Explore all available endpoints for payments, subscriptions, contacts, forms, and more.
+  </Card>
+</CardGroup>
+
+<Note>
+  If your request returns `401 Unauthorized`, verify that your `Authorization` header is formatted exactly as `Bearer cs_live_your_key_here` with no extra spaces or characters.
+</Note>

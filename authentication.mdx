@@ -1,0 +1,125 @@
+---
+title: "Authenticate requests to the CharityStack API"
+description: "Learn how to pass your API key as a Bearer token, what permissions scope your access, and how to handle rate limit headers and 401 errors."
+---
+
+Every request to the CharityStack API (except `GET /health`) must include a valid API key in the `Authorization` header. This page explains the header format, key structure, permission scopes, rate limiting, and how to obtain or replace a key.
+
+## Bearer token format
+
+Pass your API key as a Bearer token in the `Authorization` header:
+
+```
+Authorization: Bearer cs_live_your_key_here
+```
+
+Here is a full example using curl:
+
+```bash
+curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/payments \
+  -H "Authorization: Bearer cs_live_your_key_here"
+```
+
+<Warning>
+  Never include your API key in query parameters or the request body. Always pass it in the `Authorization` header.
+</Warning>
+
+## API key format
+
+Production API keys use the `cs_live_` prefix followed by a secure random string:
+
+```
+cs_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+<Tip>
+  Store your API key in an environment variable or secrets manager — never commit it to source control.
+
+  ```bash
+  export CHARITYSTACK_API_KEY="cs_live_your_key_here"
+  ```
+</Tip>
+
+## Key visibility and rotation
+
+Your full API key is shown **only once** — immediately after it is created. After that, only a preview of the key is available for identification purposes.
+
+<Warning>
+  Copy and store your key securely the moment it is issued. If you lose it, a new key must be provisioned, which automatically revokes the previous one.
+</Warning>
+
+Only one active API key is allowed per merchant account at a time. Issuing a new key immediately revokes all previously active keys for your account.
+
+## Permissions
+
+Each API key is issued with a specific set of permissions that control which endpoints you can call. Your administrator configures these when the key is provisioned.
+
+| Permission | What it grants |
+|------------|----------------|
+| `donations:read` | Read payment records |
+| `subscriptions:read` | Read subscription records |
+| `subscriptions:write` | Update subscription status or amount |
+| `contacts:read` | Read donor contact records |
+| `contacts:write` | Create and update contacts |
+| `forms:read` | Read donation form configurations |
+| `forms:write` | Create, update, and delete forms |
+| `webhooks:read` | Read webhook configurations |
+| `webhooks:write` | Create, update, and delete webhooks |
+| `analytics:read` | Read API metrics and webhook delivery logs |
+
+If your key does not include the required permission for an endpoint, the API returns `403 Forbidden`.
+
+## Rate limiting
+
+The API allows up to **1,000 requests per hour** per API key, measured over a rolling one-hour window. Every response includes the following headers so you can monitor your usage:
+
+| Header | Description |
+|--------|-------------|
+| `X-RateLimit-Limit` | Maximum requests allowed per hour |
+| `X-RateLimit-Remaining` | Requests remaining in the current window |
+| `X-RateLimit-Reset` | Unix timestamp when the current window resets |
+
+When you exceed the limit, the API returns `429 Too Many Requests`. Wait until the timestamp in `X-RateLimit-Reset` before retrying.
+
+## Error responses
+
+### 401 Unauthorized
+
+The API returns `401 Unauthorized` when the API key is missing or invalid:
+
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+Common causes:
+
+- The `Authorization` header is missing from the request
+- The key value is malformed or contains extra whitespace
+- The key has been revoked (a new key was issued for your account)
+
+Check that your header is formatted exactly as `Bearer cs_live_your_key_here`.
+
+### 403 Forbidden
+
+If your key lacks the permission required for the endpoint you called, the API returns `403 Forbidden`. Contact your administrator to reprovision your key with the appropriate permissions.
+
+## Obtaining an API key
+
+API keys are provisioned by your CharityStack account administrator. Contact your administrator and specify which permissions your integration requires. Refer to the [permissions table](#permissions) above to identify the scopes you need.
+
+<Note>
+  There is no self-service key management dashboard. Key provisioning is handled administratively. If you need a new key or updated permissions, reach out to your administrator.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Walk through making your first authenticated API request step by step.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/payments/list">
+    Explore every available endpoint and the permissions each one requires.
+  </Card>
+</CardGroup>

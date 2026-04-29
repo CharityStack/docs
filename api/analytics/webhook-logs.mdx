@@ -1,0 +1,142 @@
+---
+title: "GET /v1/analytics/webhook-logs — view delivery logs"
+sidebarTitle: "Webhook Logs"
+description: "Paginate through webhook delivery logs for your account, filtered by webhook ID or delivery status, to debug failures and monitor reliability."
+---
+
+The Webhook Logs endpoint returns a paginated list of delivery attempt records for your registered webhooks. Each log entry captures the event type delivered, the HTTP status code your server returned, response time, and any error message from failed attempts. Use `webhookId` and `status` filters to narrow results when debugging a specific endpoint or triaging a batch of failures.
+
+<Note>
+  This endpoint requires the `analytics:read` permission on your API key.
+</Note>
+
+## Request
+
+```bash
+GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/analytics/webhook-logs
+```
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+### Query parameters
+
+<ParamField query="limit" type="integer" default="50">
+  Number of log entries to return per page. Maximum `100`.
+</ParamField>
+
+<ParamField query="lastEvaluatedKey" type="string">
+  Pagination cursor returned by the previous response. Pass this value to retrieve the next page of results.
+</ParamField>
+
+<ParamField query="webhookId" type="string">
+  Filter results to delivery attempts for a specific webhook endpoint.
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter results by delivery status. Accepted values: `SUCCESS`, `FAILED`, `PENDING`.
+</ParamField>
+
+## Response
+
+### 200 — success
+
+<ResponseField name="logs" type="array">
+  List of webhook delivery log entries.
+
+  <Expandable title="WebhookLog object properties">
+    <ResponseField name="logId" type="string">
+      Unique identifier for this log entry.
+    </ResponseField>
+    <ResponseField name="webhookId" type="string">
+      The identifier of the webhook that attempted this delivery.
+    </ResponseField>
+    <ResponseField name="eventType" type="string">
+      The event type that was delivered (e.g., `donation.created`).
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      Delivery outcome: `SUCCESS`, `FAILED`, or `PENDING`.
+    </ResponseField>
+    <ResponseField name="httpStatus" type="integer">
+      HTTP response code returned by your endpoint. `null` if the request never reached your server (e.g., DNS failure or timeout).
+    </ResponseField>
+    <ResponseField name="responseTime" type="integer">
+      Time in milliseconds from delivery attempt to response (or failure).
+    </ResponseField>
+    <ResponseField name="timestamp" type="integer">
+      Unix timestamp (seconds) of the delivery attempt.
+    </ResponseField>
+    <ResponseField name="errorMessage" type="string">
+      Description of the error if the delivery failed. `null` on successful deliveries.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Number of log entries returned in this page.
+</ResponseField>
+
+<ResponseField name="hasMore" type="boolean">
+  `true` if additional pages of results are available.
+</ResponseField>
+
+<ResponseField name="lastEvaluatedKey" type="string">
+  Pagination cursor to pass as `lastEvaluatedKey` in your next request. `null` when you have reached the last page.
+</ResponseField>
+
+### 401 — unauthorized
+
+Returned when your API key is missing, invalid, or lacks the `analytics:read` permission.
+
+## Example
+
+<CodeGroup>
+
+```bash Filter by failed deliveries
+curl "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/analytics/webhook-logs?status=FAILED&limit=25" \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+```bash Filter by webhook ID
+curl "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/analytics/webhook-logs?webhookId=wh_01hx4kz9mntd8vr2bpqe5ycf3a" \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+</CodeGroup>
+
+```json Sample response (200)
+{
+  "logs": [
+    {
+      "logId": "log_03kz6mc1pqvf0xt4drsg7aeh5c",
+      "webhookId": "wh_01hx4kz9mntd8vr2bpqe5ycf3a",
+      "eventType": "donation.created",
+      "status": "FAILED",
+      "httpStatus": 500,
+      "responseTime": 1243,
+      "timestamp": 1714089900,
+      "errorMessage": "Server returned 500 Internal Server Error"
+    },
+    {
+      "logId": "log_04la7nd2qrwg1yu5estg8bfi6d",
+      "webhookId": "wh_01hx4kz9mntd8vr2bpqe5ycf3a",
+      "eventType": "subscription.cancelled",
+      "status": "FAILED",
+      "httpStatus": null,
+      "responseTime": 30001,
+      "timestamp": 1714089600,
+      "errorMessage": "Request timed out after 30 seconds"
+    }
+  ],
+  "count": 2,
+  "hasMore": false,
+  "lastEvaluatedKey": null
+}
+```
+
+<Tip>
+  A delivery with `httpStatus: null` means your server was unreachable — check DNS, firewall rules, and TLS certificate validity for the webhook URL. CharityStack considers any non-2xx response code a failure.
+</Tip>

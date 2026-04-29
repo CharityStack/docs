@@ -1,0 +1,131 @@
+{
+  "projectType": "api-service",
+  "projectName": "CharityStack Public API",
+  "projectDescription": "A RESTful API that gives nonprofits and developers programmatic access to donation payments, recurring subscriptions, donor contacts, fundraising forms, and webhook event notifications.",
+  "theme": "luma",
+  "primaryColor": "#10B981",
+  "lightColor": "#D1FAE5",
+  "darkColor": "#065F46",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/payments",
+              "concepts/subscriptions",
+              "concepts/forms",
+              "concepts/webhooks"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/pagination",
+              "guides/webhook-verification",
+              "guides/errors"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Payments",
+            "pages": [
+              "api/payments/list",
+              "api/payments/get"
+            ]
+          },
+          {
+            "group": "Subscriptions",
+            "pages": [
+              "api/subscriptions/list",
+              "api/subscriptions/get",
+              "api/subscriptions/update"
+            ]
+          },
+          {
+            "group": "Contacts",
+            "pages": [
+              "api/contacts/list",
+              "api/contacts/get",
+              "api/contacts/create"
+            ]
+          },
+          {
+            "group": "Forms",
+            "pages": [
+              "api/forms/list",
+              "api/forms/get",
+              "api/forms/create",
+              "api/forms/update",
+              "api/forms/delete"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "api/webhooks/list",
+              "api/webhooks/get",
+              "api/webhooks/create",
+              "api/webhooks/update",
+              "api/webhooks/delete"
+            ]
+          },
+          {
+            "group": "Analytics",
+            "pages": [
+              "api/analytics/webhook-logs",
+              "api/analytics/api-metrics"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Payment records access (one-time and recurring donations)",
+    "Recurring subscription management with status and amount updates",
+    "Donor contact creation and retrieval",
+    "Fundraising and event form creation with rich customization",
+    "Webhook event notifications with HMAC-SHA256 signature verification",
+    "API usage analytics and webhook delivery logs",
+    "Cursor-based pagination on all list endpoints",
+    "Per-key rate limiting at 1,000 requests per hour",
+    "Merchant-level data isolation and permission-based access control"
+  ],
+  "publicApiSurface": [
+    "GET /v1/payments",
+    "GET /v1/payments/{id}",
+    "GET /v1/subscriptions",
+    "GET /v1/subscriptions/{id}",
+    "PUT /v1/subscriptions/{id}",
+    "GET /v1/contacts",
+    "GET /v1/contacts/{id}",
+    "POST /v1/contacts",
+    "GET /v1/forms",
+    "GET /v1/forms/{id}",
+    "POST /v1/forms",
+    "PUT /v1/forms/{id}",
+    "DELETE /v1/forms/{id}",
+    "GET /v1/webhooks",
+    "GET /v1/webhooks/{id}",
+    "POST /v1/webhooks",
+    "PUT /v1/webhooks/{id}",
+    "DELETE /v1/webhooks/{id}",
+    "GET /v1/analytics/webhook-logs",
+    "GET /v1/analytics/api-metrics"
+  ]
+}

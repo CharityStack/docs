@@ -1,0 +1,106 @@
+---
+title: "GET /v1/subscriptions — list recurring subscriptions"
+sidebarTitle: "List Subscriptions"
+description: "Retrieve a paginated list of recurring subscriptions for your merchant account. Filter by status to find active or cancelled donors and view billing schedules."
+---
+
+The `GET /v1/subscriptions` endpoint returns recurring subscription records for your merchant account. Each subscription represents a donor who has committed to a repeating gift at a fixed frequency and amount. You can filter by `status` to target active donors or review cancellations. This endpoint requires the `subscriptions:read` permission on your API key.
+
+## Request
+
+<ParamField query="limit" type="integer" default="50">
+  Maximum number of subscriptions to return per page. Accepts values between 1 and 100.
+</ParamField>
+
+<ParamField query="lastEvaluatedKey" type="string">
+  Pagination cursor returned by a previous response. Pass this value to retrieve the next page of results. Omit on the first request.
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter results by subscription status. Accepted values: `ACTIVE`, `CANCELLED`. Omit to return all subscriptions regardless of status.
+</ParamField>
+
+## Response
+
+<ResponseField name="subscriptions" type="Subscription[]" required>
+  Array of subscription objects for this page of results.
+
+  <Expandable title="Subscription object properties">
+    <ResponseField name="id" type="string" required>
+      Unique identifier for the subscription.
+    </ResponseField>
+    <ResponseField name="status" type="string" required>
+      Subscription status. One of: `ACTIVE`, `CANCELLED`.
+    </ResponseField>
+    <ResponseField name="amount" type="number" required>
+      Recurring charge amount in US dollars.
+    </ResponseField>
+    <ResponseField name="frequency" type="string" required>
+      Billing frequency. One of: `DAILY`, `WEEKLY`, `MONTHLY`, `ANNUALLY`.
+    </ResponseField>
+    <ResponseField name="nextBillingDate" type="string" required>
+      ISO 8601 date of the next scheduled charge.
+    </ResponseField>
+    <ResponseField name="lastBillingDate" type="string" required>
+      ISO 8601 date of the most recent successful charge.
+    </ResponseField>
+    <ResponseField name="endBillingDate" type="string" required>
+      ISO 8601 date when the subscription is scheduled to end.
+    </ResponseField>
+    <ResponseField name="coveredFee" type="boolean" required>
+      Whether the donor elected to cover processing fees on each charge.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="count" type="integer" required>
+  Number of subscriptions returned in this response.
+</ResponseField>
+
+<ResponseField name="hasMore" type="boolean" required>
+  `true` if additional pages of results exist beyond this response.
+</ResponseField>
+
+<ResponseField name="lastEvaluatedKey" type="string">
+  Pagination cursor for the next page. Pass this as the `lastEvaluatedKey` query parameter on your next request. Absent when `hasMore` is `false`.
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/subscriptions?status=ACTIVE&limit=2" \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+</CodeGroup>
+
+```json Response
+{
+  "subscriptions": [
+    {
+      "id": "sub_01HABC1234MNOPQR",
+      "status": "ACTIVE",
+      "amount": 25.00,
+      "frequency": "MONTHLY",
+      "nextBillingDate": "2025-05-14T00:00:00Z",
+      "lastBillingDate": "2025-04-14T00:00:00Z",
+      "endBillingDate": "2026-04-14T00:00:00Z",
+      "coveredFee": false
+    },
+    {
+      "id": "sub_01HABC5678STUVWX",
+      "status": "ACTIVE",
+      "amount": 100.00,
+      "frequency": "ANNUALLY",
+      "nextBillingDate": "2026-01-01T00:00:00Z",
+      "lastBillingDate": "2025-01-01T00:00:00Z",
+      "endBillingDate": "2030-01-01T00:00:00Z",
+      "coveredFee": true
+    }
+  ],
+  "count": 2,
+  "hasMore": false
+}
+```

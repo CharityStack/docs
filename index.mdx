@@ -1,0 +1,63 @@
+---
+title: "CharityStack: Nonprofit Donation API for Developers"
+description: "CharityStack gives nonprofits and developers a RESTful API to manage payments, subscriptions, donor contacts, and fundraising forms programmatically."
+---
+
+The CharityStack Public API lets you access and manage your nonprofit's donation data programmatically. Whether you want to pull payment records into your CRM, automate donor outreach, build custom dashboards, or sync fundraising forms across platforms — the API gives you full access to your CharityStack data.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Make your first API call in minutes. Get your API key and start pulling live data.
+  </Card>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Learn how to authenticate requests with your API key and manage key permissions.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/payments/list">
+    Explore every endpoint: payments, subscriptions, contacts, forms, webhooks, and analytics.
+  </Card>
+  <Card title="Webhooks" icon="bolt" href="/concepts/webhooks">
+    Receive real-time event notifications when donations, subscriptions, or contacts change.
+  </Card>
+</CardGroup>
+
+## What you can build
+
+The CharityStack API covers the full lifecycle of nonprofit fundraising:
+
+<CardGroup cols={2}>
+  <Card title="Payment Records" icon="credit-card" href="/concepts/payments">
+    Retrieve one-time and recurring payment data, filtered by date, status, or fund.
+  </Card>
+  <Card title="Subscription Management" icon="rotate" href="/concepts/subscriptions">
+    List recurring donors, update amounts, or cancel subscriptions programmatically.
+  </Card>
+  <Card title="Donor Contacts" icon="address-book" href="/api/contacts/list">
+    Create and retrieve donor contact records synced to your CharityStack account.
+  </Card>
+  <Card title="Fundraising Forms" icon="file-pen" href="/concepts/forms">
+    Create and configure donation forms, event forms, and giving-level campaigns via API.
+  </Card>
+</CardGroup>
+
+## Get started in 3 steps
+
+<Steps>
+  <Step title="Get your API key">
+    Contact your CharityStack account administrator to provision an API key for your organization. Keys use the `cs_live_` prefix for production.
+  </Step>
+  <Step title="Make your first request">
+    Pass your key in the `Authorization: Bearer` header. Start by listing your most recent payments:
+
+    ```bash
+    curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/payments \
+      -H "Authorization: Bearer cs_live_your_key_here"
+    ```
+  </Step>
+  <Step title="Explore the API">
+    Browse the [API Reference](/api/payments/list) for all available endpoints, or follow the [Quickstart guide](/quickstart) for a full walkthrough.
+  </Step>
+</Steps>
+
+<Note>
+  The full API key is only shown once when it is created. Store it securely in an environment variable or secrets manager — never commit it to source control.
+</Note>

@@ -1,0 +1,65 @@
+---
+title: "CharityStack API: programmatic access to your donation data"
+description: "Explore what you can build with the CharityStack Public API — from syncing payment records to automating donor outreach and managing fundraising forms."
+---
+
+The CharityStack Public API gives developers and nonprofits programmatic access to their organization's fundraising data. You can retrieve payments, manage recurring subscriptions, sync donor contacts, configure fundraising forms, receive real-time webhook events, and monitor API usage — all through a single RESTful interface.
+
+## What the API covers
+
+<CardGroup cols={2}>
+  <Card title="Payments" icon="credit-card" href="/api/payments/list">
+    Retrieve one-time and recurring payment records. Filter by status, fund, or frequency.
+  </Card>
+
+  <Card title="Subscriptions" icon="rotate" href="/api/subscriptions/list">
+    List active recurring donors, update billing amounts, or cancel subscriptions on their behalf.
+  </Card>
+
+  <Card title="Contacts" icon="address-book" href="/api/contacts/list">
+    Create and retrieve donor contact records that stay in sync with your CharityStack account.
+  </Card>
+
+  <Card title="Forms" icon="file-pen" href="/api/forms/list">
+    Build and configure donation forms, event registrations, and giving-level campaigns via API.
+  </Card>
+
+  <Card title="Webhooks" icon="bolt" href="/api/webhooks/list">
+    Register endpoints to receive real-time event notifications for donations, subscriptions, and contacts.
+  </Card>
+
+  <Card title="Analytics" icon="chart-bar" href="/api/analytics/webhook-logs">
+    Monitor webhook delivery logs and API usage metrics across your integration.
+  </Card>
+</CardGroup>
+
+## Who this API is for
+
+The CharityStack API is designed for developers building on top of a CharityStack organization account. Common use cases include:
+
+- Pulling payment and subscription data into a CRM or data warehouse
+- Creating, editing, and deleting payments, subscriptions, contacts, and other CharityStack objects
+- Automating donor acknowledgment emails triggered by new payments
+- Building custom fundraising dashboards from live CharityStack data
+- Programmatically creating and updating donation forms across campaigns
+- Syncing donor contact records with third-party marketing or communication tools
+
+## Base URL
+
+All API requests go to the following production base URL:
+
+```text
+https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com
+```
+
+## Get started
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get your API key, make your first request, and understand the response format.
+  </Card>
+
+  <Card title="Authentication" icon="key" href="/authentication">
+    Learn how to send your API key, what permissions control access, and how rate limiting works.
+  </Card>
+</CardGroup>

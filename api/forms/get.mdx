@@ -1,0 +1,172 @@
+---
+title: "GET /v1/forms/{id} — retrieve a form by ID"
+sidebarTitle: "Get Form"
+description: "Fetch a single donation form by its unique ID. Returns 404 if the form doesn't exist, 403 if it belongs to another merchant, and 410 if it has been deleted."
+---
+
+The Get Form endpoint retrieves a single form by its unique identifier. The form must belong to your merchant account — cross-merchant access returns `403 Forbidden`. If the form was previously deleted, the API returns `410 Gone` rather than `404`, allowing you to distinguish between forms that never existed and those that have been deactivated.
+
+This endpoint returns the **full form configuration**, including all amounts, toggles, tickets, giving levels, custom inputs, and email settings. For a lightweight summary, use [List Forms](/api/forms/list) instead.
+
+## Endpoint
+
+```text
+GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{id}
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the form.
+</ParamField>
+
+## Response
+
+On success, the endpoint returns the full form object.
+
+### Identity & display
+
+<ResponseField name="formType" type="string">
+  Internal form type. One of: `EMBED_FORM`, `CROWDFUNDING_FORM`, `PRODUCT`, `EVENT`. See [Form type mapping](/concepts/forms#form-type-mapping).
+</ResponseField>
+
+### Funds & frequencies
+
+### Suggested amounts
+
+### Giving levels & sponsorship
+
+<ResponseField name="givingLevels" type="object[]">
+  Named donation tiers. Each has `title`, `amount`, and `description`.
+</ResponseField>
+
+<ResponseField name="sponsorshipGroups" type="object[]">
+  Sponsorship package groups. Each has `groupTitle`, `description`, and `options` array with `optionTitle` and `amount`.
+</ResponseField>
+
+### Donor options
+
+### Fundraising features
+
+### Event fields
+
+<ResponseField name="tickets" type="object[]">
+  Event tickets. Each has `name`, `price`, `quantity`, `ticketType` (`INDIVIDUAL` or `GROUP`), and optionally `groupSize`.
+</ResponseField>
+
+<ResponseField name="promoCodes" type="object[]">
+  Promo codes. Each has `code`, `discountType` (`percentage` or `amount`), `discountValue`, `quantity`, and `applicableTickets`.
+</ResponseField>
+
+### Custom email
+
+### Custom inputs & FAQs
+
+<ResponseField name="customInputs" type="object[]">
+  Additional form fields. Each has `question`, `inputType` (`short_text`, `long_text`, `single_select`, `multi_select`), `required`, and `options` (for select types).
+</ResponseField>
+
+<ResponseField name="faqs" type="object[]">
+  FAQ items. Each has `question` and `answer`.
+</ResponseField>
+
+## Status codes
+
+| Code | Description |
+| --- | --- |
+| `200` | Form returned successfully. |
+| `401` | Missing or invalid API key. |
+| `403` | Form belongs to a different merchant. |
+| `404` | No form found with the given ID. |
+| `410` | Form was found but has been deleted. |
+
+## Example
+
+```bash cURL
+curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+**200 response**
+
+```json
+{
+  "formID": "550e8400-e29b-41d4-a716-446655440000",
+  "formUrl": "https://charitystack.com/donate/550e8400-e29b-41d4-a716-446655440000",
+  "title": "Annual Giving Campaign 2025",
+  "description": "Support our mission with a tax-deductible donation.",
+  "formType": "CROWDFUNDING_FORM",
+  "funds": ["General Fund", "Education Program"],
+  "frequencies": ["ONE_TIME", "MONTHLY"],
+  "defaultFrequency": "ONE_TIME",
+  "color": "#2563EB",
+  "headerImage": "https://example.com/images/campaign-header.jpg",
+  "active": true,
+  "oneTimeAmounts": [25, 50, 100, 250, 500],
+  "monthlyAmounts": [10, 25, 50, 100],
+  "weeklyAmounts": [],
+  "dailyAmounts": [],
+  "annuallyAmounts": [],
+  "defaultOneTimeAmount": 100,
+  "defaultMonthlyAmount": 25,
+  "defaultWeeklyAmount": 0,
+  "defaultDailyAmount": 0,
+  "defaultAnnuallyAmount": 0,
+  "givingLevels": [
+    {
+      "title": "Bronze Supporter",
+      "amount": 25,
+      "description": "Help us make a difference"
+    },
+    {
+      "title": "Silver Supporter",
+      "amount": 100,
+      "description": "Fund a student for one month"
+    }
+  ],
+  "sponsorshipGroups": [],
+  "enablePhoneNumber": false,
+  "enableBillingAddress": true,
+  "enableCountryDropdown": false,
+  "defaultCountry": "",
+  "enableAnonymousName": false,
+  "enableOrganizationName": false,
+  "enableDoubleTheDonation": false,
+  "enableFundraisingBar": true,
+  "goal": 50000,
+  "amountOffset": 0,
+  "enableContactList": true,
+  "donorListType": "RECENT_DONORS",
+  "enableDetailsPage": true,
+  "enableScheduledPayments": false,
+  "enableTimeAndLocation": false,
+  "eventDate": "",
+  "startTime": "",
+  "endTime": "",
+  "location": "",
+  "eventDetails": "",
+  "timeZone": "",
+  "tickets": [],
+  "promoCodes": [],
+  "enableCustomEmail": false,
+  "replyToAddress": "",
+  "emailSubject": "",
+  "customMessage": "",
+  "customInputs": [],
+  "faqs": []
+}
+```
+
+**410 response (deleted form)**
+
+```json
+{
+  "error": "Form has been deleted"
+}
+```

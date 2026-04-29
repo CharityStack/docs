@@ -1,0 +1,73 @@
+---
+title: "GET /v1/subscriptions/{id} — retrieve a subscription"
+sidebarTitle: "Get Subscription"
+description: "Fetch the full details of a single recurring subscription by its unique identifier, including billing schedule, current status, and fee coverage preference."
+---
+
+The `GET /v1/subscriptions/{id}` endpoint returns a single subscription record. Use this endpoint to check a specific donor's recurring gift details — including the next billing date, current amount, and whether the subscription is still active. This endpoint requires the `subscriptions:read` permission on your API key.
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the subscription to retrieve, for example `sub_01HABC1234MNOPQR`.
+</ParamField>
+
+## Response
+
+On success the endpoint returns a single Subscription object.
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the subscription.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Subscription status. One of: `ACTIVE`, `CANCELLED`.
+</ResponseField>
+
+<ResponseField name="amount" type="number" required>
+  Recurring charge amount in US dollars.
+</ResponseField>
+
+<ResponseField name="frequency" type="string" required>
+  Billing frequency. One of: `DAILY`, `WEEKLY`, `MONTHLY`, `ANNUALLY`.
+</ResponseField>
+
+<ResponseField name="nextBillingDate" type="string" required>
+  ISO 8601 date of the next scheduled charge.
+</ResponseField>
+
+<ResponseField name="lastBillingDate" type="string" required>
+  ISO 8601 date of the most recent successful charge.
+</ResponseField>
+
+<ResponseField name="endBillingDate" type="string" required>
+  ISO 8601 date when the subscription is scheduled to end.
+</ResponseField>
+
+<ResponseField name="coveredFee" type="boolean" required>
+  Whether the donor elected to cover processing fees on each charge.
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/subscriptions/sub_01HABC1234MNOPQR \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+</CodeGroup>
+
+```json Response
+{
+  "id": "sub_01HABC1234MNOPQR",
+  "status": "ACTIVE",
+  "amount": 25.00,
+  "frequency": "MONTHLY",
+  "nextBillingDate": "2025-05-14T00:00:00Z",
+  "lastBillingDate": "2025-04-14T00:00:00Z",
+  "endBillingDate": "2026-04-14T00:00:00Z",
+  "coveredFee": false
+}
+```

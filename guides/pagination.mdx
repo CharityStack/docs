@@ -1,0 +1,162 @@
+---
+title: "Paginate through large result sets in CharityStack"
+description: "Learn how cursor-based pagination works in the CharityStack API, and how to iterate through all results across payments, subscriptions, contacts, and more."
+---
+
+The CharityStack API uses cursor-based pagination on all list endpoints. Rather than using page numbers, each response gives you a token you can pass to the next request to continue where you left off. This approach is reliable even when records are added or updated between requests.
+
+## How it works
+
+Every list endpoint accepts two optional query parameters:
+
+| Parameter | Type | Default | Max | Description |
+|---|---|---|---|---|
+| `limit` | integer | `50` | `100` | Number of records to return per request |
+| `lastEvaluatedKey` | string | — | — | Pagination token from a previous response |
+
+Each response includes:
+
+| Field | Type | Description |
+|---|---|---|
+| `count` | integer | Number of records returned in this page |
+| `hasMore` | boolean | Whether additional records exist beyond this page |
+| `lastEvaluatedKey` | string | Opaque token to pass in the next request; absent when `hasMore` is `false` |
+
+<Note>
+  The `lastEvaluatedKey` token is opaque — do not parse or construct it manually. Always use the value returned directly from the previous response.
+</Note>
+
+## Endpoints that support pagination
+
+Cursor-based pagination is available on the following endpoints:
+
+- `GET /v1/payments`
+- `GET /v1/subscriptions`
+- `GET /v1/contacts`
+- `GET /v1/forms`
+- `GET /v1/analytics/webhook-logs`
+- `GET /v1/analytics/api-metrics`
+
+## Step-by-step walkthrough
+
+<Steps>
+  <Step title="Make your first request">
+    Call the list endpoint without a `lastEvaluatedKey`. You can optionally set `limit` to control how many records are returned per page (up to 100).
+
+    ```bash
+    curl "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/payments?limit=50" \
+      -H "Authorization: Bearer cs_live_your_key_here"
+    ```
+
+    The response will look like this:
+
+    ```json
+    {
+      "payments": [ ... ],
+      "count": 50,
+      "hasMore": true,
+      "lastEvaluatedKey": "eyJwYXltZW50SUQiOiAicGF5XzEyMyJ9"
+    }
+    ```
+  </Step>
+
+  <Step title="Check hasMore">
+    If `hasMore` is `true`, more records exist beyond this page. If `hasMore` is `false`, you have received all available records and you can stop.
+  </Step>
+
+  <Step title="Pass lastEvaluatedKey for the next page">
+    Include the `lastEvaluatedKey` value from the previous response as a query parameter in your next request.
+
+    ```bash
+    curl "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/payments?limit=50&lastEvaluatedKey=eyJwYXltZW50SUQiOiAicGF5XzEyMyJ9" \
+      -H "Authorization: Bearer cs_live_your_key_here"
+    ```
+
+    Repeat this process until `hasMore` is `false`.
+  </Step>
+</Steps>
+
+## Full example: fetch all payments in a loop
+
+The following examples show how to paginate through all payments programmatically.
+
+<CodeGroup>
+
+```python fetch_all_payments.py
+import requests
+
+API_KEY = "cs_live_your_key_here"
+BASE_URL = "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com"
+
+def fetch_all_payments():
+    headers = {"Authorization": f"Bearer {API_KEY}"}
+    all_payments = []
+    params = {"limit": 100}
+
+    while True:
+        response = requests.get(
+            f"{BASE_URL}/v1/payments",
+            headers=headers,
+            params=params,
+        )
+        response.raise_for_status()
+        body = response.json()
+
+        all_payments.extend(body["payments"])
+        print(f"Fetched {body['count']} payments (total so far: {len(all_payments)})")
+
+        if not body.get("hasMore"):
+            break
+
+        params["lastEvaluatedKey"] = body["lastEvaluatedKey"]
+
+    return all_payments
+
+payments = fetch_all_payments()
+print(f"Done. Total payments retrieved: {len(payments)}")
+```
+
+```javascript fetchAllPayments.js
+const API_KEY = "cs_live_your_key_here";
+const BASE_URL = "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com";
+
+async function fetchAllPayments() {
+  const headers = { Authorization: `Bearer ${API_KEY}` };
+  const allPayments = [];
+  let lastEvaluatedKey = null;
+
+  do {
+    const params = new URLSearchParams({ limit: "100" });
+    if (lastEvaluatedKey) {
+      params.set("lastEvaluatedKey", lastEvaluatedKey);
+    }
+
+    const response = await fetch(
+      `${BASE_URL}/v1/payments?${params}`,
+      { headers }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Request failed: ${response.status}`);
+    }
+
+    const body = await response.json();
+    allPayments.push(...body.payments);
+    console.log(`Fetched ${body.count} payments (total: ${allPayments.length})`);
+
+    lastEvaluatedKey = body.hasMore ? body.lastEvaluatedKey : null;
+  } while (lastEvaluatedKey);
+
+  return allPayments;
+}
+
+fetchAllPayments().then((payments) => {
+  console.log(`Done. Total payments retrieved: ${payments.length}`);
+});
+```
+
+</CodeGroup>
+
+<Tip>
+  Set `limit` to `100` when you need to fetch all records as quickly as possible. This minimizes the number of API requests and helps you stay within the rate limit of 1,000 requests per hour.
+</Tip>

@@ -1,0 +1,100 @@
+---
+title: "Understanding payment records in CharityStack"
+description: "Learn how CharityStack represents donations as payment records, covering field definitions, status values, and migration from the deprecated donations API."
+---
+
+Every donation processed through CharityStack — whether a one-time gift or a charge from a recurring subscription — is captured as a **payment record**. The `/v1/payments` endpoints give you a unified view of all transaction activity for your organization, with consistent field names and clear status values that make it straightforward to build reports, sync your CRM, or trigger downstream workflows.
+
+## The payment object
+
+The following fields are returned by `GET /v1/payments` and `GET /v1/payments/{id}`.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `paymentID` | string | Unique identifier for the payment |
+| `email` | string | Payer's email address |
+| `firstName` | string | Payer's first name |
+| `lastName` | string | Payer's last name |
+| `amount` | number | Payment amount in dollars |
+| `currency` | string | Currency code (default: `USD`) |
+| `status` | string | Current payment status (see below) |
+| `fund` | string | Name of the designated fund |
+| `form` | string | Name of the form used to collect the payment |
+| `frequency` | string | Donation frequency (see below) |
+| `date` | string | ISO 8601 timestamp of the payment |
+| `paymentMethod` | string | Payment method used (e.g., `card`, `bank`) |
+| `coverFees` | boolean | Whether the payer opted to cover processing fees |
+| `anonymous` | boolean | Whether the payment was made anonymously |
+
+### Status values
+
+| Value | Meaning |
+|-------|---------|
+| `COMPLETED` | Payment was successfully processed |
+| `PENDING` | Payment is awaiting processing or confirmation |
+| `FAILED` | Payment attempt was unsuccessful |
+| `REFUNDED` | Payment was refunded to the payer |
+
+### Frequency values
+
+| Value | Meaning |
+|-------|---------|
+| `ONE_TIME` | Single, non-recurring payment |
+| `DAILY` | Charged every day |
+| `WEEKLY` | Charged every week |
+| `MONTHLY` | Charged every month |
+| `ANNUALLY` | Charged once per year |
+
+<Tip>
+  For recurring donors, each individual charge creates its own payment record with `frequency` set to the subscription's cadence. Use the `frequency` field to distinguish subscription charges from one-time gifts.
+</Tip>
+
+## API endpoints
+
+<CardGroup cols={2}>
+  <Card title="List payments" icon="list" href="/api/payments/list">
+    Retrieve a paginated list of all payment records for your account.
+  </Card>
+  <Card title="Get payment" icon="magnifying-glass" href="/api/payments/get">
+    Fetch a single payment record by its ID.
+  </Card>
+</CardGroup>
+
+## Migrating from the donations API
+
+<Warning>
+  The `/v1/donations` endpoints are deprecated and will be permanently removed on **2026-07-01**. Migrate to `/v1/payments` before this date to avoid service interruption.
+</Warning>
+
+The `/v1/payments` endpoints return the same underlying data as `/v1/donations`, but with cleaner field names and without several fields that were rarely used. Update your integration by replacing the endpoint path and renaming the fields you read from each response.
+
+### Field mapping
+
+| Legacy field (`/v1/donations`) | New field (`/v1/payments`) |
+|-------------------------------|---------------------------|
+| `donationID` | `paymentID` |
+| `donorEmail` | `email` |
+| `donorFirstName` | `firstName` |
+| `donorLastName` | `lastName` |
+| `fundName` | `fund` |
+| `formName` | `form` |
+| `donationDate` | `date` |
+
+The fields `merchantName`, `tipAmount`, and `transactionID` are not present in the payment object and are not available through `/v1/payments`.
+
+### Migration steps
+
+<Steps>
+  <Step title="Update your endpoint URL">
+    Replace `GET /v1/donations` with `GET /v1/payments` and `GET /v1/donations/{id}` with `GET /v1/payments/{id}`. The query parameters (`limit`, `lastEvaluatedKey`) are identical.
+  </Step>
+  <Step title="Rename fields in your code">
+    Update any references to the legacy field names listed in the mapping table above.
+  </Step>
+  <Step title="Remove references to removed fields">
+    Drop any code that reads `merchantName`, `tipAmount`, or `transactionID`. These fields have no equivalent in the payments API.
+  </Step>
+  <Step title="Verify your integration">
+    Make a test call to `GET /v1/payments` and confirm the response shape matches your updated field expectations before the 2026-07-01 cutover.
+  </Step>
+</Steps>

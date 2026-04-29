@@ -1,0 +1,106 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "CharityStack",
+  "theme": "luma",
+  "colors": {
+    "primary": "#10B981",
+    "light": "#D1FAE5",
+    "dark": "#065F46"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/CharityStack"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/payments",
+              "concepts/subscriptions",
+              "concepts/forms",
+              "concepts/webhooks"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/pagination",
+              "guides/webhook-verification",
+              "guides/errors"
+            ]
+          }
+        ],
+        "icon": "file-doc"
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Payments",
+            "pages": [
+              "api/payments/list",
+              "api/payments/get"
+            ]
+          },
+          {
+            "group": "Subscriptions",
+            "pages": [
+              "api/subscriptions/list",
+              "api/subscriptions/get",
+              "api/subscriptions/update"
+            ]
+          },
+          {
+            "group": "Contacts",
+            "pages": [
+              "api/contacts/list",
+              "api/contacts/get",
+              "api/contacts/create"
+            ]
+          },
+          {
+            "group": "Forms",
+            "pages": [
+              "api/forms/list",
+              "api/forms/get",
+              "api/forms/create",
+              "api/forms/update",
+              "api/forms/delete"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "api/webhooks/list",
+              "api/webhooks/get",
+              "api/webhooks/create",
+              "api/webhooks/update",
+              "api/webhooks/delete"
+            ]
+          },
+          {
+            "group": "Analytics",
+            "pages": [
+              "api/analytics/webhook-logs",
+              "api/analytics/api-metrics"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,73 @@
+---
+title: "DELETE /v1/forms/{id} — deactivate a donation form"
+sidebarTitle: "Delete Form"
+description: "Soft-delete a donation form so it no longer appears in list results. The form record is preserved, and accessing it by ID returns 410 Gone."
+---
+
+The Delete Form endpoint performs a soft delete — the form record is retained in the system but is deactivated and no longer returned by the [List Forms](/api/forms/list) endpoint. Any active donors attempting to use the form's URL after deletion will receive a `410 Gone` response. Deleting an already-deleted form also returns `410`. This operation cannot be reversed through the API.
+
+## Endpoint
+
+```
+DELETE https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{id}
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the form to delete.
+</ParamField>
+
+## Response
+
+<ResponseField name="message" type="string">
+  Confirmation message: `"Form deleted successfully"`.
+</ResponseField>
+
+<ResponseField name="formID" type="string">
+  The ID of the form that was deleted.
+</ResponseField>
+
+## Status codes
+
+| Code | Description |
+|------|-------------|
+| `200` | Form deleted successfully. |
+| `401` | Missing or invalid API key. |
+| `403` | Form belongs to a different merchant. |
+| `404` | No form found with the given ID. |
+| `410` | Form has already been deleted. |
+
+## Example
+
+```bash cURL
+curl -X DELETE https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+**200 response**
+
+```json
+{
+  "message": "Form deleted successfully",
+  "formID": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**410 response (already deleted)**
+
+```json
+{
+  "error": "Form has already been deleted"
+}
+```
+
+<Warning>
+  Deletion is permanent through the API. To temporarily stop accepting donations without deleting the form, set `active` to `false` using the [Update Form](/api/forms/update) endpoint instead.
+</Warning>

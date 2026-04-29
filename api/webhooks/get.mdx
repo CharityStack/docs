@@ -1,0 +1,102 @@
+---
+title: "GET /v1/webhooks/{id} — retrieve a webhook configuration"
+sidebarTitle: "Get Webhook"
+description: "Fetch the full configuration and delivery statistics for a single webhook by ID, including subscribed event types, status, success count, and failure count."
+---
+
+The Get Webhook endpoint returns the complete configuration for a single registered webhook. Use it to inspect a webhook's subscribed event types, current status, and cumulative delivery statistics. This endpoint requires the `webhooks:read` permission.
+
+## Request
+
+```bash
+GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks/{id}
+```
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+### Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the webhook to retrieve (e.g., `wh_01hx4kz9mntd8vr2bpqe5ycf3a`).
+</ParamField>
+
+## Response
+
+### 200 — success
+
+<ResponseField name="webhookId" type="string">
+  Unique identifier for the webhook endpoint.
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  The destination HTTPS URL where events are delivered.
+</ResponseField>
+
+<ResponseField name="events" type="array[string]">
+  List of event types this webhook is subscribed to.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current status of the webhook. One of `ACTIVE`, `DISABLED`, or `DELETED`.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Optional human-readable description provided at registration.
+</ResponseField>
+
+<ResponseField name="createdAt" type="integer">
+  Unix timestamp (seconds) when the webhook was registered.
+</ResponseField>
+
+<ResponseField name="lastDeliveryAt" type="integer">
+  Unix timestamp (seconds) of the most recent delivery attempt. `null` if no deliveries have occurred.
+</ResponseField>
+
+<ResponseField name="successCount" type="integer">
+  Total number of successful event deliveries to this endpoint.
+</ResponseField>
+
+<ResponseField name="failureCount" type="integer">
+  Total number of failed delivery attempts to this endpoint.
+</ResponseField>
+
+### 401 — unauthorized
+
+Returned when your API key is missing, invalid, or lacks the `webhooks:read` permission.
+
+### 404 — not found
+
+Returned when no webhook with the given `id` exists under your merchant account.
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks/wh_01hx4kz9mntd8vr2bpqe5ycf3a \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+</CodeGroup>
+
+```json Sample response
+{
+  "webhookId": "wh_01hx4kz9mntd8vr2bpqe5ycf3a",
+  "url": "https://yourapp.com/webhooks/charitystack",
+  "events": [
+    "donation.created",
+    "subscription.created",
+    "subscription.cancelled"
+  ],
+  "status": "ACTIVE",
+  "description": "Production webhook for donation notifications",
+  "createdAt": 1714003200,
+  "lastDeliveryAt": 1714089600,
+  "successCount": 142,
+  "failureCount": 3
+}
+```

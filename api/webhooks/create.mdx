@@ -1,0 +1,150 @@
+---
+title: "POST /v1/webhooks — register a new webhook endpoint"
+sidebarTitle: "Register Webhook"
+description: "Register an HTTPS endpoint to receive real-time event notifications for donations, subscriptions, contacts, and forms in your CharityStack account."
+---
+
+Registering a webhook tells CharityStack where to deliver event notifications. You specify a destination URL and the set of event types you want to receive. The response includes a one-time `secret` used to verify the HMAC-SHA256 signature on every delivery — save it immediately, as it cannot be retrieved again. This endpoint requires the `webhooks:write` permission.
+
+<Warning>
+  The `secret` field is only included in this response and is never retrievable again. Store it securely in an environment variable or secrets manager before you proceed.
+</Warning>
+
+## Request
+
+```bash
+POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks
+```
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `application/json`.
+</ParamField>
+
+### Request body
+
+<ParamField body="url" type="string" required>
+  The HTTPS URL that will receive webhook event payloads. HTTP is accepted in development environments only.
+</ParamField>
+
+<ParamField body="events" type="array[string]" required>
+  One or more event types to subscribe to. The array must not be empty. Available values:
+
+  | Event | Triggered when |
+  |---|---|
+  | `donation.created` | A new donation is received |
+  | `donation.updated` | A donation's status changes |
+  | `subscription.created` | A new recurring subscription starts |
+  | `subscription.updated` | A subscription is modified |
+  | `subscription.cancelled` | A subscription is cancelled |
+  | `contact.created` | A new contact is added |
+  | `contact.updated` | A contact's information is updated |
+  | `form.created` | A new donation form is created |
+  | `form.updated` | A form's configuration changes |
+</ParamField>
+
+<ParamField body="description" type="string">
+  Optional human-readable label to help identify this webhook. Useful when you manage multiple endpoints.
+</ParamField>
+
+## Response
+
+### 201 — created
+
+<ResponseField name="webhookId" type="string">
+  Unique identifier assigned to the new webhook.
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  The destination URL you provided.
+</ResponseField>
+
+<ResponseField name="events" type="array[string]">
+  The event types you subscribed to.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Initial status of the webhook. Always `ACTIVE` on creation.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The description you provided, or an empty string if omitted.
+</ResponseField>
+
+<ResponseField name="createdAt" type="integer">
+  Unix timestamp (seconds) when the webhook was registered.
+</ResponseField>
+
+<ResponseField name="lastDeliveryAt" type="integer">
+  `null` on a newly created webhook — no deliveries have occurred yet.
+</ResponseField>
+
+<ResponseField name="successCount" type="integer">
+  `0` on creation.
+</ResponseField>
+
+<ResponseField name="failureCount" type="integer">
+  `0` on creation.
+</ResponseField>
+
+<ResponseField name="secret" type="string">
+  HMAC-SHA256 signing secret for verifying webhook payloads. **Shown only once.** Use this value to validate the `X-Webhook-Signature` header on incoming deliveries.
+</ResponseField>
+
+<ResponseField name="warning" type="string">
+  A reminder message confirming that the secret will not be shown again.
+</ResponseField>
+
+### 400 — bad request
+
+Returned when required fields are missing, the `url` is not a valid HTTPS URL, or `events` is empty.
+
+### 401 — unauthorized
+
+Returned when your API key is missing, invalid, or lacks the `webhooks:write` permission.
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://yourapp.com/webhooks/charitystack",
+    "events": ["donation.created", "subscription.created", "subscription.cancelled"],
+    "description": "Production webhook for donation notifications"
+  }'
+```
+
+</CodeGroup>
+
+```json Sample response (201)
+{
+  "webhookId": "wh_01hx4kz9mntd8vr2bpqe5ycf3a",
+  "url": "https://yourapp.com/webhooks/charitystack",
+  "events": [
+    "donation.created",
+    "subscription.created",
+    "subscription.cancelled"
+  ],
+  "status": "ACTIVE",
+  "description": "Production webhook for donation notifications",
+  "createdAt": 1714003200,
+  "lastDeliveryAt": null,
+  "successCount": 0,
+  "failureCount": 0,
+  "secret": "whsec_a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+  "warning": "Save this secret now. You will not be able to see it again!"
+}
+```
+
+<Tip>
+  After registering, verify your integration by sending a test event and confirming that your server correctly validates the `X-Webhook-Signature` header. See the [webhook verification guide](/guides/webhook-verification) for implementation examples.
+</Tip>

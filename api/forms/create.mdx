@@ -1,0 +1,250 @@
+---
+title: "POST /v1/forms — create a donation form"
+sidebarTitle: "Create Form"
+description: "Create a new fundraising or event form with customizable amounts, frequencies, giving levels, sponsorship tiers, tickets, and event details."
+---
+
+The Create Form endpoint builds a new donation form and returns its hosted URL and embed snippet. Only `title` and `funds` are required — all other fields have sensible defaults.
+
+The form is immediately live at `charitystack.com/donate/{formID}` unless you set `active` to `false`.
+
+## Endpoint
+
+```text
+POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+## Request body
+
+### Required fields
+
+<ParamField body="title" type="string" required>
+  Display name for the form. Must be unique within your account.
+</ParamField>
+
+<ParamField body="funds" type="string[]" required>
+  List of fund names donors can designate their gift to. At least one required.
+</ParamField>
+
+### Form type
+
+<ParamField body="formType" default="fundraising" type="string">
+  `fundraising` or `event`. Event forms require at least one ticket.
+</ParamField>
+
+<ParamField body="amountType" default="standard" type="string">
+  For fundraising forms only. Controls how amounts are presented:
+
+  - `standard` — Free-form amounts with suggested values
+  - `giving_level` — Named tiers (requires `givingLevels` array)
+  - `sponsorship` — Grouped packages (requires `sponsorshipGroups` array)
+</ParamField>
+
+<Note>
+  The `formType` and `amountType` you send are mapped to an internal value in the response. See [Form type mapping](/concepts/forms#form-type-mapping) for details.
+</Note>
+
+### Frequencies & amounts
+
+<ParamField body="frequencies" type="string[]">
+  Donation frequencies to enable. Values: `ONE_TIME`, `DAILY`, `WEEKLY`, `MONTHLY`, `ANNUALLY`. Required for fundraising forms. Event forms default to `["ONE_TIME"]`.
+</ParamField>
+
+<ParamField body="defaultFrequency" type="string">
+  Pre-selected frequency when the form loads. Defaults to the first item in `frequencies`.
+</ParamField>
+
+<ParamField body="oneTimeAmounts" default="[25, 50, 100, 250, 500]" type="number[]">
+  Suggested one-time amounts. Each must be between $1 and $1,000,000.
+</ParamField>
+
+<ParamField body="monthlyAmounts" default="[10, 25, 50, 100]" type="number[]">
+  Suggested monthly amounts.
+</ParamField>
+
+       
+
+### Giving levels
+
+<ParamField body="givingLevels" type="object[]">
+  Named donation tiers. Required when `amountType` is `giving_level`.
+
+  Each object requires `title` (string), `amount` (number, \> 0), and `description` (string).
+</ParamField>
+
+### Sponsorship groups
+
+<ParamField body="sponsorshipGroups" type="object[]">
+  Sponsorship packages. Required when `amountType` is `sponsorship`. Each group must have at least one option.
+
+  Each group: `groupTitle` (string), `description` (string), `options` array of `{ optionTitle, amount }`.
+</ParamField>
+
+### Appearance
+
+<ParamField body="color" default="#3B82F6" type="string">
+  Hex color for form styling. Must be valid format: `#XXXXXX`.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Supporting text shown below the title. Maximum 650 characters.
+</ParamField>
+
+<ParamField body="active" default="true" type="boolean">
+  Set to `false` to create the form in a draft state.
+</ParamField>
+
+### Donor options
+
+      
+
+### Fundraising features
+
+      
+
+### Event fields
+
+<ParamField body="enableTimeAndLocation" default="false" type="boolean">
+  Display event date, time, and location. When `true`, `eventDate` and `startTime` become required.
+</ParamField>
+
+     
+
+### Tickets (event forms)
+
+<ParamField body="tickets" type="object[]">
+  Event tickets. **Required for event forms** — at least one ticket must be provided.
+
+  Each ticket requires:
+
+  - `name` (string) — must be unique across all tickets
+  - `price` (number) — must be \>= 0 (free tickets allowed)
+  - `quantity` (integer) — must be \> 0
+  - `ticketType` (string) — `INDIVIDUAL` or `GROUP`
+  - `groupSize` (integer) — required for `GROUP` tickets, must be \> 1
+</ParamField>
+
+### Promo codes (event forms)
+
+<ParamField body="promoCodes" type="object[]">
+  Discount codes for tickets. Each requires `code`, `discountType` (`percentage` or `amount`), `discountValue`, `quantity`, and `applicableTickets` (array of ticket names).
+</ParamField>
+
+### Custom email
+
+<ParamField body="enableCustomEmail" default="false" type="boolean">
+  Enable custom receipt emails. When `true`, `replyToAddress`, `emailSubject`, and `customMessage` are all required.
+</ParamField>
+
+  
+
+### Custom inputs & FAQs
+
+<ParamField body="customInputs" type="object[]">
+  Additional form fields. Each requires `question`, `inputType` (`short_text`, `long_text`, `single_select`, `multi_select`), and `required` (boolean). Dropdown types (`single_select`, `multi_select`) require an `options` array with at least 2 items.
+</ParamField>
+
+<ParamField body="faqs" type="object[]">
+  FAQ items displayed on the form. Each requires `question` and `answer`.
+</ParamField>
+
+## Response
+
+   
+
+## Status codes
+
+| Code | Description |
+| --- | --- |
+| `201` | Form created successfully. |
+| `400` | Validation error. Response includes `error` (single issue) or `error` \+ `details` array (multiple issues). |
+| `401` | Missing or invalid API key. |
+| `409` | A form with this title already exists for your account. |
+
+## Examples
+
+### Fundraising form
+
+```bash cURL
+curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Annual Giving Campaign 2025",
+    "funds": ["General Fund", "Education Program"],
+    "frequencies": ["ONE_TIME", "MONTHLY"],
+    "formType": "fundraising",
+    "amountType": "standard",
+    "description": "Support our mission with a tax-deductible donation.",
+    "color": "#2563EB",
+    "enableFundraisingBar": true,
+    "goal": 50000,
+    "oneTimeAmounts": [25, 50, 100, 250, 500],
+    "monthlyAmounts": [10, 25, 50, 100]
+  }'
+```
+
+### Event form
+
+```bash cURL
+curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Annual Gala 2025",
+    "funds": ["Event Fund"],
+    "formType": "event",
+    "description": "Join us for an evening of celebration.",
+    "color": "#7C3AED",
+    "enableTimeAndLocation": true,
+    "eventDate": "2025-06-15",
+    "startTime": "18:00",
+    "endTime": "22:00",
+    "location": "Grand Ballroom, 123 Main St",
+    "tickets": [
+      {
+        "name": "Individual Ticket",
+        "price": 150,
+        "quantity": 200,
+        "ticketType": "INDIVIDUAL"
+      },
+      {
+        "name": "Table of 8",
+        "price": 1000,
+        "quantity": 20,
+        "ticketType": "GROUP",
+        "groupSize": 8
+      }
+    ]
+  }'
+```
+
+**201 response**
+
+```json
+{
+  "formID": "550e8400-e29b-41d4-a716-446655440000",
+  "formUrl": "https://charitystack.com/donate/550e8400-e29b-41d4-a716-446655440000",
+  "embedHTML": "<iframe src=\"https://charitystack.com/donate/550e8400-e29b-41d4-a716-446655440000\" width=\"100%\" height=\"800\" frameborder=\"0\" style=\"border: none;\"></iframe>",
+  "message": "Form created successfully"
+}
+```
+
+**400 response (validation errors)**
+
+```json
+{
+  "error": "Validation failed",
+  "details": [
+    "title is required",
+    "funds is required (array of fund names)",
+    "frequencies is required for fundraising forms"
+  ]
+}
+```

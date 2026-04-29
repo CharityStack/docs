@@ -1,0 +1,174 @@
+---
+title: "GET /v1/contacts — list donor contacts"
+sidebarTitle: "List Contacts"
+description: "Retrieve a paginated list of all donor contacts for your merchant account. Optionally filter by email address and page through results with a cursor token."
+---
+
+The List Contacts endpoint returns all contact records stored in your CharityStack account. Each contact includes identifying information, associated emails, phone numbers, addresses, and lifetime transaction totals. Use `limit` and `lastEvaluatedKey` to page through large contact lists.
+
+## Endpoint
+
+```
+GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+## Query parameters
+
+<ParamField query="limit" type="number" default="50">
+  Maximum number of contacts to return. Accepted range is 1–100.
+</ParamField>
+
+<ParamField query="lastEvaluatedKey" type="string">
+  Pagination cursor returned by a previous response. Pass this value to retrieve the next page of results.
+</ParamField>
+
+<ParamField query="email" type="string">
+  Filter results to contacts whose `emails` array contains this address.
+</ParamField>
+
+## Response
+
+<ResponseField name="contacts" type="Contact[]" required>
+  Array of contact objects belonging to your merchant account.
+
+  <Expandable title="Contact object fields">
+    <ResponseField name="id" type="string">
+      Unique identifier for the contact (UUID).
+    </ResponseField>
+    <ResponseField name="firstName" type="string">
+      Contact's first name.
+    </ResponseField>
+    <ResponseField name="lastName" type="string">
+      Contact's last name.
+    </ResponseField>
+    <ResponseField name="fullName" type="string">
+      Full name derived from `firstName` and `lastName`.
+    </ResponseField>
+    <ResponseField name="organizationName" type="string">
+      Organization or company name, if provided.
+    </ResponseField>
+    <ResponseField name="emails" type="object[]">
+      List of email address objects.
+      <Expandable title="email object">
+        <ResponseField name="value" type="string">
+          The email address.
+        </ResponseField>
+        <ResponseField name="is_primary" type="boolean">
+          Whether this is the contact's primary email.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="phones" type="object[]">
+      List of phone number objects.
+      <Expandable title="phone object">
+        <ResponseField name="value" type="string">
+          The phone number.
+        </ResponseField>
+        <ResponseField name="is_primary" type="boolean">
+          Whether this is the contact's primary phone number.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="addresses" type="object[]">
+      List of address objects.
+      <Expandable title="address object">
+        <ResponseField name="line1" type="string">Street address line 1.</ResponseField>
+        <ResponseField name="line2" type="string">Street address line 2.</ResponseField>
+        <ResponseField name="city" type="string">City.</ResponseField>
+        <ResponseField name="region" type="string">State or region code (e.g., `MA`).</ResponseField>
+        <ResponseField name="postal" type="string">Postal or ZIP code.</ResponseField>
+        <ResponseField name="country" type="string">Country name.</ResponseField>
+        <ResponseField name="is_primary" type="boolean">Whether this is the primary address.</ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="totalTransactionCount" type="number">
+      Lifetime number of transactions associated with this contact.
+    </ResponseField>
+    <ResponseField name="totalTransactionValue" type="number">
+      Lifetime total transaction value in dollars.
+    </ResponseField>
+    <ResponseField name="created_at" type="string">
+      ISO 8601 timestamp of when the contact was created.
+    </ResponseField>
+    <ResponseField name="updated_at" type="string">
+      ISO 8601 timestamp of the most recent update.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="count" type="number" required>
+  Number of contacts returned in this response page.
+</ResponseField>
+
+<ResponseField name="hasMore" type="boolean" required>
+  `true` if additional pages of results are available.
+</ResponseField>
+
+<ResponseField name="lastEvaluatedKey" type="string">
+  Pagination cursor to pass as `lastEvaluatedKey` in your next request. Only present when `hasMore` is `true`.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts?limit=10 \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+```bash cURL — next page
+curl "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts?limit=10&lastEvaluatedKey=eyJpZCI6ImFiYzEyMyJ9" \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+</CodeGroup>
+
+**200 response**
+
+```json
+{
+  "contacts": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "fullName": "Jane Smith",
+      "organizationName": "Smith Foundation",
+      "emails": [
+        { "value": "jane@smithfoundation.org", "is_primary": true }
+      ],
+      "phones": [
+        { "value": "16175550101", "is_primary": true }
+      ],
+      "addresses": [
+        {
+          "line1": "456 Park Ave",
+          "line2": "",
+          "city": "Boston",
+          "region": "MA",
+          "postal": "02101",
+          "country": "United States",
+          "is_primary": true
+        }
+      ],
+      "totalTransactionCount": 12,
+      "totalTransactionValue": 3250.00,
+      "created_at": "2024-03-15T10:22:00.000000",
+      "updated_at": "2025-01-08T14:05:33.000000"
+    }
+  ],
+  "count": 1,
+  "hasMore": false
+}
+```
+
+<Note>
+  The `lastEvaluatedKey` value is a base64-encoded string. Treat it as an opaque cursor — do not parse or construct it manually.
+</Note>

@@ -1,0 +1,160 @@
+---
+title: "GET /v1/forms — list your donation forms"
+sidebarTitle: "List Forms"
+description: "Retrieve a paginated list of all donation forms for your merchant account, including form type, fund configuration, frequencies, and active status."
+---
+
+The List Forms endpoint returns all donation forms associated with your CharityStack account. Each form object includes the public URL, fund assignments, available frequencies, styling options, and active status. Forms that have been deleted are excluded from the list. Use the `limit` and `lastEvaluatedKey` parameters to page through results.
+
+<Note>
+  The list endpoint returns a **summary** of each form. To retrieve the full configuration (amounts, tickets, toggles, custom inputs, etc.), use [Get Form by ID](/api/forms/get).
+</Note>
+
+## Endpoint
+
+```text
+GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+## Query parameters
+
+<ParamField query="limit" default="50" type="number">
+  Maximum number of forms to return per page. Accepted range is 1–100.
+</ParamField>
+
+<ParamField query="lastEvaluatedKey" type="string">
+  Pagination cursor from a previous response. Pass this to retrieve the next page.
+</ParamField>
+
+## Response
+
+<ResponseField name="forms" type="FormSummary[]" required>
+  Array of form summary objects for your account.
+
+  <Expandable title="Form summary fields">
+    <ResponseField name="formID" type="string">
+      Unique identifier for the form.
+    </ResponseField>
+
+    <ResponseField name="formUrl" type="string">
+      Public URL where donors can access the form (e.g., `https://charitystack.com/donate/form_abc123`).
+    </ResponseField>
+
+    <ResponseField name="title" type="string">
+      Display name for the form.
+    </ResponseField>
+
+    <ResponseField name="description" type="string">
+      Form description text shown to donors.
+    </ResponseField>
+
+    <ResponseField name="formType" type="string">
+      Internal form type. One of: `EMBED_FORM`, `CROWDFUNDING_FORM`, `PRODUCT`, `EVENT`. See [Form type mapping](/concepts/forms#form-type-mapping) for how these relate to the `formType` and `amountType` values used during creation.
+    </ResponseField>
+
+    <ResponseField name="funds" type="string[]">
+      List of fund names available on the form.
+    </ResponseField>
+
+    <ResponseField name="frequencies" type="string[]">
+      Enabled donation frequencies. Possible values: `ONE_TIME`, `DAILY`, `WEEKLY`, `MONTHLY`, `ANNUALLY`.
+    </ResponseField>
+
+    <ResponseField name="color" type="string">
+      Hex color code used for form styling (e.g., `#3B82F6`).
+    </ResponseField>
+
+    <ResponseField name="headerImage" type="string">
+      URL of the form's header image, if set.
+    </ResponseField>
+
+    <ResponseField name="active" type="boolean">
+      Whether the form is currently active and accepting donations.
+    </ResponseField>
+
+    <ResponseField name="goal" type="number">
+      Fundraising goal amount. Present when the fundraising bar is enabled.
+    </ResponseField>
+
+    <ResponseField name="eventDate" type="string">
+      Event date in `YYYY-MM-DD` format. Present on event forms.
+    </ResponseField>
+
+    <ResponseField name="startTime" type="string">
+      Event start time in `HH:MM` 24-hour format. Present on event forms.
+    </ResponseField>
+
+    <ResponseField name="endTime" type="string">
+      Event end time in `HH:MM` 24-hour format. Present on event forms.
+    </ResponseField>
+
+    <ResponseField name="location" type="string">
+      Event location. Present on event forms.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="count" type="number" required>
+  Number of forms returned in this response page.
+</ResponseField>
+
+<ResponseField name="hasMore" type="boolean" required>
+  `true` if additional pages of results exist.
+</ResponseField>
+
+<ResponseField name="lastEvaluatedKey" type="string">
+  Pagination cursor for the next request. Only present when `hasMore` is `true`.
+</ResponseField>
+
+## Example
+
+```bash cURL
+curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms?limit=25 \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+**200 response**
+
+```json
+{
+  "forms": [
+    {
+      "formID": "550e8400-e29b-41d4-a716-446655440000",
+      "formUrl": "https://charitystack.com/donate/550e8400-e29b-41d4-a716-446655440000",
+      "title": "Annual Giving Campaign 2025",
+      "description": "Support our mission with a tax-deductible donation.",
+      "formType": "CROWDFUNDING_FORM",
+      "funds": ["General Fund", "Education Program"],
+      "frequencies": ["ONE_TIME", "MONTHLY"],
+      "color": "#2563EB",
+      "headerImage": "https://example.com/images/campaign-header.jpg",
+      "active": true,
+      "goal": 50000
+    },
+    {
+      "formID": "661f9511-f30c-52e5-b827-557766551111",
+      "formUrl": "https://charitystack.com/donate/661f9511-f30c-52e5-b827-557766551111",
+      "title": "Annual Gala 2025",
+      "description": "Join us for an evening of celebration.",
+      "formType": "EVENT",
+      "funds": ["Event Fund"],
+      "frequencies": ["ONE_TIME"],
+      "color": "#7C3AED",
+      "headerImage": "",
+      "active": true,
+      "eventDate": "2025-06-15",
+      "startTime": "18:00",
+      "endTime": "22:00",
+      "location": "Grand Ballroom, 123 Main St"
+    }
+  ],
+  "count": 2,
+  "hasMore": false
+}
+```

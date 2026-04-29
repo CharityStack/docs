@@ -1,0 +1,76 @@
+---
+title: "DELETE /v1/webhooks/{id} — deactivate a webhook"
+sidebarTitle: "Delete Webhook"
+description: "Permanently deactivate a webhook endpoint. The webhook stops receiving events immediately and cannot be re-enabled after deletion."
+---
+
+Deleting a webhook performs a soft delete: the webhook record is retained for audit purposes but immediately stops receiving event deliveries. Once deleted, the webhook's status becomes `DELETED` and any subsequent request to its `id` returns `410 Gone`. This action cannot be undone — if you want to temporarily pause delivery without permanent removal, use the [Update Webhook](/api/webhooks/update) endpoint to set `status` to `DISABLED` instead. This endpoint requires the `webhooks:write` permission.
+
+## Request
+
+```bash
+DELETE https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks/{id}
+```
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+### Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the webhook to delete (e.g., `wh_01hx4kz9mntd8vr2bpqe5ycf3a`).
+</ParamField>
+
+## Response
+
+### 200 — success
+
+<ResponseField name="message" type="string">
+  Human-readable confirmation that the webhook was deleted.
+</ResponseField>
+
+<ResponseField name="webhookId" type="string">
+  The identifier of the webhook that was deleted.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Always `"DELETED"` on a successful response.
+</ResponseField>
+
+### 401 — unauthorized
+
+Returned when your API key is missing, invalid, or lacks the `webhooks:write` permission.
+
+### 404 — not found
+
+Returned when no webhook with the given `id` exists under your merchant account.
+
+### 410 — gone
+
+Returned when the webhook was already deleted in a previous request. Once a webhook is deleted, all subsequent requests to that `id` return `410 Gone`.
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl -X DELETE https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks/wh_01hx4kz9mntd8vr2bpqe5ycf3a \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+</CodeGroup>
+
+```json Sample response (200)
+{
+  "message": "Webhook deleted successfully",
+  "webhookId": "wh_01hx4kz9mntd8vr2bpqe5ycf3a",
+  "status": "DELETED"
+}
+```
+
+<Warning>
+  Deletion is permanent. Any application logic relying on this webhook will stop receiving events immediately. Register a new webhook if you need to restore delivery to the same endpoint.
+</Warning>

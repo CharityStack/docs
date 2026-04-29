@@ -1,0 +1,111 @@
+---
+title: "GET /v1/payments/{id} — retrieve a payment by ID"
+sidebarTitle: "Get Payment"
+description: "Fetch the full details of a single payment record using its unique identifier. Returns a Payment object including payer info, amount, fund, and status."
+---
+
+The `GET /v1/payments/{id}` endpoint returns a single payment record. You will receive a `403` if the payment exists but belongs to a different merchant, and a `404` if no record with that ID is found. This endpoint requires the `donations:read` permission on your API key.
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the payment to retrieve, for example `pay_01HXYZ1234ABCDEF`.
+</ParamField>
+
+## Response
+
+On success the endpoint returns a single Payment object.
+
+<ResponseField name="paymentID" type="string" required>
+  Unique identifier for the payment.
+</ResponseField>
+
+<ResponseField name="email" type="string" required>
+  Email address of the payer.
+</ResponseField>
+
+<ResponseField name="firstName" type="string" required>
+  Payer's first name.
+</ResponseField>
+
+<ResponseField name="lastName" type="string" required>
+  Payer's last name.
+</ResponseField>
+
+<ResponseField name="amount" type="number" required>
+  Payment amount in US dollars.
+</ResponseField>
+
+<ResponseField name="currency" type="string" required>
+  ISO 4217 currency code. Defaults to `USD`.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Payment status. One of: `COMPLETED`, `PENDING`, `FAILED`, `REFUNDED`.
+</ResponseField>
+
+<ResponseField name="fund" type="string" required>
+  Name of the fund designated by the payer.
+</ResponseField>
+
+<ResponseField name="form" type="string" required>
+  Name of the donation form used to collect this payment.
+</ResponseField>
+
+<ResponseField name="frequency" type="string" required>
+  Giving frequency. One of: `ONE_TIME`, `DAILY`, `WEEKLY`, `MONTHLY`, `ANNUALLY`.
+</ResponseField>
+
+<ResponseField name="date" type="string" required>
+  ISO 8601 timestamp of when the payment was made.
+</ResponseField>
+
+<ResponseField name="paymentMethod" type="string" required>
+  Payment method used, such as `card` or `bank`.
+</ResponseField>
+
+<ResponseField name="coverFees" type="boolean" required>
+  Whether the payer elected to cover processing fees.
+</ResponseField>
+
+<ResponseField name="anonymous" type="boolean" required>
+  Whether the payer requested anonymity.
+</ResponseField>
+
+## Response codes
+
+| Code | Meaning |
+|------|---------|
+| `200` | Payment found and returned. |
+| `403` | The payment belongs to a different merchant account. |
+| `404` | No payment with that ID exists. |
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/payments/pay_01HXYZ1234ABCDEF \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+</CodeGroup>
+
+```json Response
+{
+  "paymentID": "pay_01HXYZ1234ABCDEF",
+  "email": "jane.doe@example.com",
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "amount": 100.00,
+  "currency": "USD",
+  "status": "COMPLETED",
+  "fund": "General Fund",
+  "form": "Annual Appeal",
+  "frequency": "ONE_TIME",
+  "date": "2025-04-15T14:32:00Z",
+  "paymentMethod": "card",
+  "coverFees": true,
+  "anonymous": false
+}
+```

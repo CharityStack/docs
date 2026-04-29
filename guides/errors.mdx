@@ -1,0 +1,260 @@
+---
+title: "Handle CharityStack API errors in your integration"
+description: "Learn CharityStack's error response format, every HTTP status code you may receive, and how to implement retry logic for rate limits and server errors."
+---
+
+The CharityStack API uses standard HTTP status codes to indicate success or failure. Every error response includes a JSON body with a human-readable message, and validation errors include a `details` array listing all problems at once so you can fix them in a single request.
+
+## Error response format
+
+All error responses follow one of two shapes depending on whether multiple validation errors were found.
+
+**Single error:**
+
+```json
+{
+  "error": "Resource not found"
+}
+```
+
+**Validation errors (multiple issues):**
+
+```json
+{
+  "error": "Validation failed",
+  "details": [
+    "title is required",
+    "funds is required (array of fund names)",
+    "goal is required when enableFundraisingBar is true"
+  ]
+}
+```
+
+When the API returns `"Validation failed"`, inspect the `details` array to see all issues at once and correct your request in one round-trip.
+
+## HTTP status codes
+
+| Code | Meaning | When you'll see it |
+|---|---|---|
+| `200` | Success | Request completed successfully |
+| `201` | Created | A new resource was created (POST requests) |
+| `400` | Bad Request | Missing or invalid request parameters |
+| `401` | Unauthorized | API key is missing or invalid |
+| `403` | Forbidden | Resource exists but belongs to another account |
+| `404` | Not Found | Resource does not exist |
+| `409` | Conflict | Duplicate resource — e.g., a form title that is already in use |
+| `410` | Gone | Resource existed but has been deleted |
+| `429` | Too Many Requests | Rate limit exceeded (1,000 requests per hour) |
+| `500` | Internal Server Error | Unexpected error on CharityStack's side |
+
+<Note>
+  `403 Forbidden` and `404 Not Found` are intentionally distinct. A `403` means the record exists but belongs to a different merchant account; a `404` means no matching record was found at all.
+</Note>
+
+## Rate limit headers
+
+Every API response includes the following headers so you can monitor your usage:
+
+| Header | Description |
+|---|---|
+| `X-RateLimit-Limit` | Maximum requests allowed per hour (1,000) |
+| `X-RateLimit-Remaining` | Requests remaining in the current window |
+| `X-RateLimit-Reset` | Unix timestamp when the rate limit window resets |
+
+Check `X-RateLimit-Remaining` proactively in long-running batch jobs to avoid hitting the limit unexpectedly.
+
+## Handling errors in code
+
+The examples below show a recommended error-handling pattern that checks the status code, parses the error body, and retries with exponential backoff on `429` and `500` responses.
+
+<CodeGroup>
+
+```python error_handling.py
+import time
+import requests
+
+API_KEY = "cs_live_your_key_here"
+BASE_URL = "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com"
+
+
+def api_request(method: str, path: str, **kwargs):
+    headers = kwargs.pop("headers", {})
+    headers["Authorization"] = f"Bearer {API_KEY}"
+
+    max_retries = 4
+    backoff = 1  # seconds
+
+    for attempt in range(max_retries):
+        response = requests.request(
+            method,
+            f"{BASE_URL}{path}",
+            headers=headers,
+            **kwargs,
+        )
+
+        # Success
+        if response.status_code in (200, 201):
+            return response.json()
+
+        # Parse error body
+        try:
+            error_body = response.json()
+        except ValueError:
+            error_body = {"error": response.text}
+
+        message = error_body.get("error", "Unknown error")
+        details = error_body.get("details", [])
+
+        # Retryable errors: rate limit or server error
+        if response.status_code in (429, 500) and attempt < max_retries - 1:
+            # Honour the reset time for rate limit responses
+            if response.status_code == 429:
+                reset_at = int(response.headers.get("X-RateLimit-Reset", 0))
+                wait = max(reset_at - int(time.time()), backoff)
+            else:
+                wait = backoff * (2 ** attempt)
+
+            print(f"Retrying in {wait}s (attempt {attempt + 1}/{max_retries})...")
+            time.sleep(wait)
+            continue
+
+        # Non-retryable errors
+        if response.status_code == 400:
+            if details:
+                raise ValueError(f"Validation failed: {details}")
+            raise ValueError(f"Bad request: {message}")
+        elif response.status_code == 401:
+            raise PermissionError("Invalid or missing API key")
+        elif response.status_code == 403:
+            raise PermissionError(f"Access denied: {message}")
+        elif response.status_code == 404:
+            raise LookupError(f"Not found: {message}")
+        elif response.status_code == 409:
+            raise ValueError(f"Conflict: {message}")
+        elif response.status_code == 410:
+            raise LookupError(f"Resource deleted: {message}")
+        else:
+            raise RuntimeError(f"API error {response.status_code}: {message}")
+
+    raise RuntimeError("Max retries exceeded")
+
+
+# Example usage
+try:
+    payments = api_request("GET", "/v1/payments", params={"limit": 50})
+    print(f"Retrieved {payments['count']} payments")
+except LookupError as e:
+    print(f"Resource error: {e}")
+except ValueError as e:
+    print(f"Request error: {e}")
+except PermissionError as e:
+    print(f"Auth error: {e}")
+```
+
+```javascript errorHandling.js
+const API_KEY = "cs_live_your_key_here";
+const BASE_URL = "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com";
+
+async function apiRequest(method, path, options = {}) {
+  const { body, params } = options;
+  const MAX_RETRIES = 4;
+
+  const url = new URL(`${BASE_URL}${path}`);
+  if (params) {
+    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  }
+
+  const headers = {
+    Authorization: `Bearer ${API_KEY}`,
+    "Content-Type": "application/json",
+  };
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const response = await fetch(url.toString(), {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    // Success
+    if (response.status === 200 || response.status === 201) {
+      return response.json();
+    }
+
+    // Parse error body
+    let errorBody;
+    try {
+      errorBody = await response.json();
+    } catch {
+      errorBody = { error: await response.text() };
+    }
+
+    const message = errorBody.error || "Unknown error";
+    const details = errorBody.details || [];
+
+    // Retryable errors
+    if ((response.status === 429 || response.status === 500) && attempt < MAX_RETRIES - 1) {
+      let waitMs;
+      if (response.status === 429) {
+        const resetAt = parseInt(response.headers.get("X-RateLimit-Reset") || "0", 10);
+        waitMs = Math.max((resetAt - Math.floor(Date.now() / 1000)) * 1000, 1000);
+      } else {
+        waitMs = 1000 * Math.pow(2, attempt);
+      }
+      console.log(`Retrying in ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})...`);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      continue;
+    }
+
+    // Non-retryable errors
+    const err = new Error(message);
+    err.status = response.status;
+    err.details = details;
+
+    if (response.status === 400 && details.length > 0) {
+      err.message = `Validation failed: ${details.join(", ")}`;
+    }
+
+    throw err;
+  }
+
+  throw new Error("Max retries exceeded");
+}
+
+// Example usage
+apiRequest("GET", "/v1/payments", { params: { limit: "50" } })
+  .then((data) => console.log(`Retrieved ${data.count} payments`))
+  .catch((err) => {
+    if (err.status === 401) {
+      console.error("Invalid or missing API key");
+    } else if (err.status === 404) {
+      console.error("Resource not found");
+    } else if (err.status === 400) {
+      console.error("Request error:", err.message);
+    } else {
+      console.error("Unexpected error:", err.message);
+    }
+  });
+```
+
+</CodeGroup>
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Check the status code before parsing the body">
+    Status codes tell you the category of the problem immediately. Parse `error` and `details` from the body for the specific message, but key your error-handling logic on the status code.
+  </Accordion>
+
+  <Accordion title="Use exponential backoff for 429 and 500">
+    Retrying immediately after a rate limit or server error usually makes things worse. Wait at least 1 second before the first retry and double the wait on each subsequent attempt. For `429` responses, prefer to wait until the time indicated by `X-RateLimit-Reset`.
+  </Accordion>
+
+  <Accordion title="Do not retry 4xx errors (except 429)">
+    Client errors in the `4xx` range — bad parameters, missing auth, conflicts — won't resolve on their own. Fix the underlying problem in your code rather than retrying the same request.
+  </Accordion>
+
+  <Accordion title="Log the X-Webhook-ID or request context on errors">
+    When logging errors, include the relevant resource ID, the status code, and the full `error`/`details` body. This makes debugging much faster when tracing a specific failed request.
+  </Accordion>
+</AccordionGroup>

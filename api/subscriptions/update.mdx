@@ -1,0 +1,105 @@
+---
+title: "PUT /v1/subscriptions/{id} — cancel or update amount"
+sidebarTitle: "Update Subscription"
+description: "Cancel an active subscription or adjust its recurring amount by sending a status or amount field. At least one field is required per request."
+---
+
+The `PUT /v1/subscriptions/{id}` endpoint lets you modify an existing subscription. You can cancel a subscription by setting `status` to `CANCELLED`, adjust the recurring amount by passing a new `amount`, or do both in a single request. At least one field must be included in the request body. This endpoint requires the `subscriptions:write` permission on your API key.
+
+<Warning>
+  Cancelling a subscription is irreversible through the API. The donor will no longer be charged after the current billing cycle ends.
+</Warning>
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the subscription to update, for example `sub_01HABC1234MNOPQR`.
+</ParamField>
+
+## Request body
+
+<ParamField body="status" type="string">
+  New status for the subscription. Accepted values: `ACTIVE`, `CANCELLED`.
+</ParamField>
+
+<ParamField body="amount" type="number">
+  New recurring charge amount in US dollars. Must be a positive number.
+</ParamField>
+
+## Response
+
+On success the endpoint returns the updated Subscription object.
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the subscription.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Updated subscription status. One of: `ACTIVE`, `CANCELLED`.
+</ResponseField>
+
+<ResponseField name="amount" type="number" required>
+  Updated recurring charge amount in US dollars.
+</ResponseField>
+
+<ResponseField name="frequency" type="string" required>
+  Billing frequency. One of: `DAILY`, `WEEKLY`, `MONTHLY`, `ANNUALLY`.
+</ResponseField>
+
+<ResponseField name="nextBillingDate" type="string" required>
+  ISO 8601 date of the next scheduled charge.
+</ResponseField>
+
+<ResponseField name="lastBillingDate" type="string" required>
+  ISO 8601 date of the most recent successful charge.
+</ResponseField>
+
+<ResponseField name="endBillingDate" type="string" required>
+  ISO 8601 date when the subscription is scheduled to end.
+</ResponseField>
+
+<ResponseField name="coveredFee" type="boolean" required>
+  Whether the donor elected to cover processing fees on each charge.
+</ResponseField>
+
+## Response codes
+
+| Code | Meaning |
+|------|---------|
+| `200` | Subscription updated successfully. |
+| `400` | Invalid `status` value or non-positive `amount`. |
+| `403` | The subscription belongs to a different merchant account. |
+| `404` | No subscription with that ID exists. |
+
+## Examples
+
+<CodeGroup>
+
+```bash Cancel a subscription
+curl -X PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/subscriptions/sub_01HABC1234MNOPQR \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "CANCELLED"}'
+```
+
+```bash Update recurring amount
+curl -X PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/subscriptions/sub_01HABC1234MNOPQR \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 50.00}'
+```
+
+</CodeGroup>
+
+```json Response
+{
+  "id": "sub_01HABC1234MNOPQR",
+  "status": "CANCELLED",
+  "amount": 25.00,
+  "frequency": "MONTHLY",
+  "nextBillingDate": "2025-05-14T00:00:00Z",
+  "lastBillingDate": "2025-04-14T00:00:00Z",
+  "endBillingDate": "2026-04-14T00:00:00Z",
+  "coveredFee": false
+}
+```

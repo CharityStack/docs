@@ -1,0 +1,98 @@
+---
+title: "GET /v1/forms/{formID}/links/{linkID} — retrieve a prefilled checkout link"
+sidebarTitle: "Get Link"
+description: "Fetch the metadata and prefill payload for a previously-created checkout link, including the shareable URL."
+---
+
+The Get Link endpoint returns a single prefilled checkout link by its ID. Use it to verify a link's contents after creation, to retrieve a `checkoutUrl` you may have lost, or to inspect what's stored before sharing a link with a donor.
+
+The link must belong to your merchant and must be attached to the `formID` in the path — both are validated to keep the URL shape `(/forms/{X}/links/{Y})` honest about parent ownership.
+
+## Endpoint
+
+```text
+GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links/{linkID}
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+## Path parameters
+
+<ParamField path="formID" type="string" required>
+  The parent form's unique identifier.
+</ParamField>
+
+<ParamField path="linkID" type="string" required>
+  The link's unique identifier, returned by [Create Link](/api/forms/create-link).
+</ParamField>
+
+## Response
+
+<ResponseField name="linkID" type="string">
+  Unique identifier for the link.
+</ResponseField>
+
+<ResponseField name="formID" type="string">
+  The parent form's ID.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The link's internal label.
+</ResponseField>
+
+<ResponseField name="prefill" type="object">
+  The prefill payload, translated back to the same camelCase keys you sent on create. Keys are omitted if they weren't set. See [Create Link](/api/forms/create-link#prefill-whitelist) for the full whitelist.
+</ResponseField>
+
+<ResponseField name="checkoutUrl" type="string">
+  The shareable URL. Shape: `https://charitystack.com/donate/{formID}?elementid={linkID}` for fundraising forms, or `https://charitystack.com/attend/{formID}?elementid={linkID}` for event forms.
+</ResponseField>
+
+<ResponseField name="active" type="boolean">
+  Whether the link is active. Inactive links still resolve at checkout — this flag is informational.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 UTC timestamp from when the link was created.
+</ResponseField>
+
+## Status codes
+
+| Code | Description |
+| --- | --- |
+| `200` | Link returned successfully. |
+| `400` | Missing `formID` or `linkID` path parameter. |
+| `401` | Missing or invalid API key. |
+| `403` | Link belongs to a different merchant. |
+| `404` | No link found with the given ID, or the link isn't attached to the supplied `formID`. |
+
+## Example
+
+```bash cURL
+curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/550e8400-e29b-41d4-a716-446655440000/links/bc033789-1ee2-4f3f-bec5-2f108c2d65ba \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+**200 response**
+
+```json
+{
+  "linkID": "bc033789-1ee2-4f3f-bec5-2f108c2d65ba",
+  "formID": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Outreach email — May 2026",
+  "prefill": {
+    "firstName": "Akif",
+    "lastName": "Abidi",
+    "email": "akif@example.org",
+    "amount": "50",
+    "frequency": "MONTHLY"
+  },
+  "checkoutUrl": "https://charitystack.com/donate/550e8400-e29b-41d4-a716-446655440000?elementid=bc033789-1ee2-4f3f-bec5-2f108c2d65ba",
+  "active": true,
+  "createdAt": "2026-05-21T16:42:11.482312+00:00"
+}
+```

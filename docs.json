@@ -79,7 +79,9 @@
               "api/forms/get",
               "api/forms/create",
               "api/forms/update",
-              "api/forms/delete"
+              "api/forms/delete",
+              "api/forms/create-link",
+              "api/forms/get-link"
             ]
           },
           {

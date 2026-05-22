@@ -79,9 +79,25 @@
               "api/forms/get",
               "api/forms/create",
               "api/forms/update",
-              "api/forms/delete",
-              "api/forms/create-link",
-              "api/forms/get-link"
+              "api/forms/delete"
+            ]
+          },
+          {
+            "group": "Prefilled-Checkout Links",
+            "pages": [
+              "api/forms/list-links",
+              "api/forms/get-link",
+              "api/forms/create-checkout-link",
+              "api/forms/update-link",
+              "api/forms/delete-link",
+              "api/forms/activate-link",
+              "api/forms/deactivate-link"
+            ]
+          },
+          {
+            "group": "Organization",
+            "pages": [
+              "api/organization/get"
             ]
           },
           {

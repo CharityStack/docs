@@ -1,12 +1,12 @@
 ---
 title: "GET /v1/forms/{formID}/links/{linkID} — retrieve a prefilled checkout link"
 sidebarTitle: "Get Link"
-description: "Fetch the metadata and prefill payload for a previously-created checkout link, including the shareable URL."
+description: "Fetch the metadata, prefill payload, destination type, and shareable URL of a previously-created checkout link."
 ---
 
-The Get Link endpoint returns a single prefilled checkout link by its ID. Use it to verify a link's contents after creation, to retrieve a `checkoutUrl` you may have lost, or to inspect what's stored before sharing a link with a donor.
+The Get Link endpoint returns a single prefilled checkout link by its ID. Use it to verify a link's contents after creation, to retrieve a `checkoutUrl` you may have lost, or to inspect what's stored before sharing.
 
-The link must belong to your merchant and must be attached to the `formID` in the path — both are validated to keep the URL shape `(/forms/{X}/links/{Y})` honest about parent ownership.
+The link must belong to your organization and must be attached to the `formID` in the path — both are validated to keep the URL shape `(/forms/{X}/links/{Y})` honest about parent ownership.
 
 ## Endpoint
 
@@ -27,7 +27,7 @@ GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/lin
 </ParamField>
 
 <ParamField path="linkID" type="string" required>
-  The link's unique identifier, returned by [Create Link](/api/forms/create-link).
+  The link's unique identifier, returned by [Create Link](/api/forms/create-checkout-link).
 </ParamField>
 
 ## Response
@@ -45,15 +45,23 @@ GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/lin
 </ResponseField>
 
 <ResponseField name="prefill" type="object">
-  The prefill payload, translated back to the same camelCase keys you sent on create. Keys are omitted if they weren't set. See [Create Link](/api/forms/create-link#prefill-whitelist) for the full whitelist.
+  The prefill payload, translated back to the same camelCase keys you sent on create. Keys are omitted if they weren't set. `customInputs` are keyed by their original question title (or the storage key as a fallback if the input was renamed/deleted on the form after the link was created). See [Create Link — prefill whitelist](/api/forms/create-checkout-link) for the full set.
 </ResponseField>
 
 <ResponseField name="checkoutUrl" type="string">
-  The shareable URL. Shape: `https://charitystack.com/donate/{formID}?elementid={linkID}` for fundraising forms, or `https://charitystack.com/attend/{formID}?elementid={linkID}` for event forms.
+  The shareable URL. Rebuilt from current `destinationType` + `overlayPath` + organization config — so if the underlying form or merchant config changed, the URL reflects the current state.
+</ResponseField>
+
+<ResponseField name="destinationType" type="string">
+  One of `HOSTED_PAGE_DONATE`, `HOSTED_PAGE_ATTEND`, `OVERLAY_DONATE`, `OVERLAY_ATTEND`.
+</ResponseField>
+
+<ResponseField name="overlayPath" type="string">
+  URL path on the organization's site (only set for `OVERLAY_*` destinations; empty string otherwise).
 </ResponseField>
 
 <ResponseField name="active" type="boolean">
-  Whether the link is active. Inactive links still resolve at checkout — this flag is informational.
+  Whether the link is active. Inactive links are visible via [List Links](/api/forms/list-links) with `?active=false` and can be re-enabled via [Activate](/api/forms/activate-link).
 </ResponseField>
 
 <ResponseField name="createdAt" type="string">
@@ -67,8 +75,9 @@ GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/lin
 | `200` | Link returned successfully. |
 | `400` | Missing `formID` or `linkID` path parameter. |
 | `401` | Missing or invalid API key. |
-| `403` | Link belongs to a different merchant. |
+| `403` | Link belongs to a different organization. |
 | `404` | No link found with the given ID, or the link isn't attached to the supplied `formID`. |
+| `500` | Internal error (e.g. the link's destinationType is overlay but the organization's `organizationBaseURLs` is unavailable). |
 
 ## Example
 
@@ -89,10 +98,15 @@ curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/550e8400-e2
     "lastName": "Abidi",
     "email": "akif@example.org",
     "amount": "50",
-    "frequency": "MONTHLY"
+    "frequency": "MONTHLY",
+    "customInputs": {
+      "T-shirt size": "M"
+    }
   },
   "checkoutUrl": "https://charitystack.com/donate/550e8400-e29b-41d4-a716-446655440000?elementid=bc033789-1ee2-4f3f-bec5-2f108c2d65ba",
+  "destinationType": "HOSTED_PAGE_DONATE",
+  "overlayPath": "",
   "active": true,
-  "createdAt": "2026-05-21T16:42:11.482312+00:00"
+  "createdAt": "2026-05-22T10:41:23.651186+00:00"
 }
 ```

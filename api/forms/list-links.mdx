@@ -1,0 +1,116 @@
+---
+title: "GET /v1/forms/{formID}/links — list prefilled checkout links"
+sidebarTitle: "List Links"
+description: "List a form's prefilled checkout links. Paginated. Optionally filter by active state."
+---
+
+Returns the prefilled checkout links attached to a form, paginated. Includes links created via this API and via the dashboard's URL Builder — both write to the same underlying store.
+
+## Endpoint
+
+```text
+GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+## Path parameters
+
+<ParamField path="formID" type="string" required>
+  The parent form's unique identifier.
+</ParamField>
+
+## Query parameters
+
+<ParamField query="limit" type="integer" default="50">
+  Maximum number of links to return per page. Range: `1`–`200`.
+</ParamField>
+
+<ParamField query="cursor" type="string">
+  Pagination token from the previous response's `nextCursor`. Omit on the first request.
+</ParamField>
+
+<ParamField query="active" type="string">
+  Filter by active status. One of `true` or `false`. Omit to include both.
+</ParamField>
+
+## Response
+
+<ResponseField name="links" type="object[]">
+  Array of link objects in the same shape as the [Get Link](/api/forms/get-link) response (without `createdAt` precision differences). Each includes `linkID`, `formID`, `name`, `prefill`, `checkoutUrl`, `destinationType`, `overlayPath`, `active`, `createdAt`.
+
+  Note: when a link's `destinationType` is `OVERLAY_*` but the organization's `organizationBaseURLs` is unavailable, that row's `checkoutUrl` will be `null` rather than a broken relative URL. The rest of the row is still returned so you can identify it and either re-configure the organization or delete the link.
+</ResponseField>
+
+<ResponseField name="nextCursor" type="string | null">
+  Opaque pagination token. Pass back as `?cursor=` to fetch the next page. `null` when there are no more pages.
+</ResponseField>
+
+## Status codes
+
+| Code | Description |
+| --- | --- |
+| `200` | List returned (may be empty). |
+| `400` | Invalid `limit` or `active` query parameter. |
+| `401` | Missing or invalid API key. |
+| `403` | Form belongs to a different organization. |
+| `404` | No form found with the given ID. |
+| `500` | Internal error. |
+
+## Examples
+
+### First page (default limit)
+
+```bash cURL
+curl "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links" \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+### Paginate through results
+
+```bash cURL
+# First page
+curl "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links?limit=20" \
+  -H "Authorization: Bearer cs_live_your_key"
+
+# Next page using the returned cursor
+curl "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links?limit=20&cursor=eyJlbGVtZW50SUQ..." \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+### Only inactive links
+
+```bash cURL
+curl "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links?active=false" \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+**200 response**
+
+```json
+{
+  "links": [
+    {
+      "linkID": "bc033789-1ee2-4f3f-bec5-2f108c2d65ba",
+      "formID": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "Outreach email — May 2026",
+      "prefill": {
+        "firstName": "Akif",
+        "email": "akif@example.org",
+        "amount": "50",
+        "frequency": "MONTHLY"
+      },
+      "checkoutUrl": "https://charitystack.com/donate/550e8400-e29b-41d4-a716-446655440000?elementid=bc033789-1ee2-4f3f-bec5-2f108c2d65ba",
+      "destinationType": "HOSTED_PAGE_DONATE",
+      "overlayPath": "",
+      "active": true,
+      "createdAt": "2026-05-22T10:41:23.651186+00:00"
+    }
+  ],
+  "nextCursor": null
+}
+```

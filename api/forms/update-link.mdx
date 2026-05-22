@@ -1,0 +1,87 @@
+---
+title: "PUT /v1/forms/{formID}/links/{linkID} — update a prefilled checkout link"
+sidebarTitle: "Update Link"
+description: "Replace a link's name, prefill payload, destination type, and overlay path. Full-record semantics — any field omitted from the body is treated as cleared, not preserved."
+---
+
+The Update Link endpoint replaces the editable fields of an existing link. It uses **full-record semantics**: fields omitted from the body are cleared, not preserved. If you want to keep existing values, include them explicitly in the request.
+
+Audit fields (`createdAt`, the original creator) and the link's `active` state are preserved across updates. To flip `active`, use [Activate](/api/forms/activate-link) or [Deactivate](/api/forms/deactivate-link) instead.
+
+The parent form cannot be changed — the `formID` in the URL must match the link's stored parent.
+
+## Endpoint
+
+```text
+PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links/{linkID}
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+## Path parameters
+
+<ParamField path="formID" type="string" required>
+  The parent form's unique identifier.
+</ParamField>
+
+<ParamField path="linkID" type="string" required>
+  The link's unique identifier.
+</ParamField>
+
+## Request body
+
+The request body is identical to [Create Link](/api/forms/create-link) — `name`, `destinationType`, `overlayPath`, and the full `prefill` object are all supported. The same validation rules apply.
+
+When `destinationType` changes between `HOSTED_PAGE_*` and `OVERLAY_*`, `overlayPath` becomes required (for overlay) or is cleared (for hosted-page). The `destinationType` must remain compatible with the form's type — you cannot change a HOSTED_PAGE_DONATE link to HOSTED_PAGE_ATTEND on a non-EVENT form.
+
+## Response
+
+Same shape as [Get Link](/api/forms/get-link). Returns the updated state.
+
+## Status codes
+
+| Code | Description |
+| --- | --- |
+| `200` | Link updated. |
+| `400` | Validation error (same set as create). |
+| `401` | Missing or invalid API key. |
+| `403` | Link or form belongs to a different organization. |
+| `404` | No link found with the given ID, or not attached to the supplied `formID`, or the parent form was deleted. |
+| `410` | Parent form has been deleted. |
+| `500` | Internal error. |
+
+## Example
+
+```bash cURL
+curl -X PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links/{linkID} \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Outreach email — May 2026 (updated)",
+    "prefill": {
+      "firstName": "Akif",
+      "lastName": "Abidi",
+      "email": "akif@example.org",
+      "amount": 75,
+      "frequency": "MONTHLY"
+    }
+  }'
+```
+
+**200 response**
+
+```json
+{
+  "linkID": "bc033789-1ee2-4f3f-bec5-2f108c2d65ba",
+  "formID": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Outreach email — May 2026 (updated)",
+  "checkoutUrl": "https://charitystack.com/donate/550e8400-e29b-41d4-a716-446655440000?elementid=bc033789-1ee2-4f3f-bec5-2f108c2d65ba",
+  "destinationType": "HOSTED_PAGE_DONATE",
+  "overlayPath": "",
+  "active": true
+}
+```

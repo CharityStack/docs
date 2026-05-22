@@ -80,8 +80,19 @@
               "api/forms/create",
               "api/forms/update",
               "api/forms/delete",
+              "api/forms/list-links",
+              "api/forms/get-link",
               "api/forms/create-link",
-              "api/forms/get-link"
+              "api/forms/update-link",
+              "api/forms/delete-link",
+              "api/forms/activate-link",
+              "api/forms/deactivate-link"
+            ]
+          },
+          {
+            "group": "Organization",
+            "pages": [
+              "api/organization/get"
             ]
           },
           {

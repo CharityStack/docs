@@ -1,10 +1,10 @@
 ---
 title: "POST /v1/forms/{formID}/links — create a prefilled checkout link"
 sidebarTitle: "Create Link"
-description: "Generate a unique checkout URL with donor info, amount, frequency, fund, and UTM parameters baked in. The URL points at the form's hosted checkout page and pre-populates the form for the donor."
+description: "Generate a unique checkout URL with donor info, amount, frequency, fund, custom inputs, sponsorship selection, ticket selection, UTM parameters, and overlay destination — all prefilled and ready to share."
 ---
 
-The Create Link endpoint produces a one-line URL you can hand to a donor (in an email, ad, QR code, mailer, etc.) that opens the form's hosted checkout with fields already filled in. The donor data is stored server-side under a `linkID` — the URL itself is short and doesn't expose the prefill in query parameters.
+The Create Link endpoint produces a shareable URL that opens the form's checkout with fields pre-populated. The donor data is stored server-side under a `linkID` — the URL itself is short and doesn't expose the prefill values in query parameters.
 
 A link belongs to its parent form. Deactivating the form does **not** deactivate its links, but a link pointing at a deleted form will fail to load checkout.
 
@@ -23,8 +23,24 @@ POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/li
 ## Path parameters
 
 <ParamField path="formID" type="string" required>
-  The unique identifier of the parent form. Returns `404` if the form doesn't exist for your merchant, `403` if it belongs to a different merchant, `410` if it has been deleted.
+  The unique identifier of the parent form. Returns `404` if the form doesn't exist for your organization, `403` if it belongs to a different organization, `410` if it has been deleted.
 </ParamField>
+
+## Discovering what to prefill
+
+Before building the request body, fetch the parent form and your organization config so you know which keys to set:
+
+```bash
+# Discover form-level custom inputs, funds, frequencies, tickets, productGroups
+curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID} \
+  -H "Authorization: Bearer cs_live_your_key"
+
+# Discover organization-level globalCustomInputs and organizationBaseURLs (for overlay)
+curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/organization \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+Both responses are cacheable per organization — fetch once at startup and reuse.
 
 ## Request body
 
@@ -32,13 +48,26 @@ POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/li
   Internal label for the link, shown in the dashboard's URL Builder list. Max 200 characters. Defaults to `"API link — {timestamp}"` if omitted.
 </ParamField>
 
-<ParamField body="prefill" type="object">
-  Fields to pre-populate on the checkout page. All keys are optional, but unknown keys will be rejected with a `400`. See the full whitelist below.
+<ParamField body="destinationType" type="string">
+  Where the link should resolve. Optional — auto-derived from the form's type if omitted.
+
+  - `HOSTED_PAGE_DONATE` — fundraising/sponsorship/crowdfunding forms (default for non-EVENT)
+  - `HOSTED_PAGE_ATTEND` — event forms (default for EVENT)
+  - `OVERLAY_DONATE` — overlay snippet on your organization's website (non-EVENT)
+  - `OVERLAY_ATTEND` — overlay snippet on your organization's website (EVENT)
+
+  Overlay destinations require `organizationBaseURLs` to be configured on your organization. Check via `GET /v1/organization` first; the API will return a `400` if it's not set.
 </ParamField>
 
-### Prefill whitelist
+<ParamField body="overlayPath" type="string">
+  Required when `destinationType` is `OVERLAY_DONATE` or `OVERLAY_ATTEND`. URL path on your organization's site where the overlay-trigger snippet lives, e.g. `/give`. Must begin with `/`.
+</ParamField>
 
-All `prefill` keys are camelCase. Strings are trimmed; empty strings are ignored.
+<ParamField body="prefill" type="object">
+  Fields to pre-populate at checkout. All keys are optional. Unknown keys return a `400` with a list of accepted keys.
+</ParamField>
+
+### Prefill — donor identity
 
 <ParamField body="prefill.firstName" type="string">
   Donor's first name.
@@ -59,6 +88,8 @@ All `prefill` keys are camelCase. Strings are trimmed; empty strings are ignored
 <ParamField body="prefill.organizationName" type="string">
   Donor's organization or company name. Only shown if the form has `enableOrganizationName` enabled.
 </ParamField>
+
+### Prefill — address
 
 <ParamField body="prefill.address" type="string">
   Donor's street address. Only shown if the form has `enableBillingAddress` enabled.
@@ -81,20 +112,52 @@ All `prefill` keys are camelCase. Strings are trimmed; empty strings are ignored
 </ParamField>
 
 <ParamField body="prefill.country" type="string">
-  Country. Only shown if the form has `enableCountryDropdown` enabled.
+  Country code or name. Only shown if the form has `enableCountryDropdown` enabled.
 </ParamField>
 
+### Prefill — donation amount
+
 <ParamField body="prefill.amount" type="number">
-  Donation amount. Must be between `0.01` and `1,000,000`. Booleans are rejected.
+  Donation amount. Must be between `0.01` and `1,000,000`. Booleans are rejected. For sponsorship-style PRODUCT forms, set this to the chosen product's price so the sponsorship UI renders as selected at checkout. For crowdfunding forms with giving levels, set this to the matching giving-level amount.
 </ParamField>
 
 <ParamField body="prefill.fund" type="string">
-  Fund to designate the gift to. Must match one of the form's configured `funds` exactly (case-sensitive).
+  Fund to designate the gift to. Must match one of the form's configured `funds` exactly (case-sensitive). Discoverable from `GET /v1/forms/{id}`'s `funds` array.
 </ParamField>
 
 <ParamField body="prefill.frequency" type="string">
-  Donation cadence. One of `ONE_TIME`, `DAILY`, `WEEKLY`, `MONTHLY`, `ANNUALLY`. Must also be enabled on the form.
+  Donation cadence. One of `ONE_TIME`, `DAILY`, `WEEKLY`, `MONTHLY`, `ANNUALLY`. Must also be enabled on the form. Discoverable from `GET /v1/forms/{id}`'s `frequencies` array.
 </ParamField>
+
+### Prefill — custom inputs
+
+<ParamField body="prefill.customInputs" type="object">
+  Pre-populate the form's `customInputs` and the organization's `globalCustomInputs`. Object keys may be either the input's `id` or its `title` (case-sensitive). Unknown keys return `400` with a list of valid IDs/titles.
+
+  Form-level inputs are discoverable via `GET /v1/forms/{id}` (`customInputs` field). Organization-level globals via `GET /v1/organization` (`globalCustomInputs` field).
+</ParamField>
+
+### Prefill — sponsorship (PRODUCT forms only)
+
+Available when the form's `formType` is `PRODUCT`. Both keys are case-sensitive and must match values configured on the form (visible in the `productGroups` field of `GET /v1/forms/{id}`).
+
+<ParamField body="prefill.sponsorshipGroup" type="string">
+  Name of the sponsorship group, e.g. `"East"`. Must match a `productGroups[].productGroupName` on the form.
+</ParamField>
+
+<ParamField body="prefill.sponsorshipItem" type="string">
+  Name of the chosen product within the group, e.g. `"New York"`. Must match a `productName` within the chosen `sponsorshipGroup`. Requires `sponsorshipGroup` to also be set.
+</ParamField>
+
+### Prefill — ticket (EVENT forms only)
+
+Available when the form's `formType` is `EVENT`.
+
+<ParamField body="prefill.ticket" type="string">
+  Ticket name to pre-select, e.g. `"General Admission"`. Must match a configured ticket on the event form. Tickets are stored on the event's element record — fetch the form to see configured ticket names.
+</ParamField>
+
+### Prefill — UTM parameters
 
 <ParamField body="prefill.utmSource" type="string">
   UTM source (e.g. `newsletter`, `facebook`). Stored and recorded with the donation.
@@ -119,7 +182,7 @@ All `prefill` keys are camelCase. Strings are trimmed; empty strings are ignored
 ## Response
 
 <ResponseField name="linkID" type="string">
-  Unique identifier for the link. Use this with the [Get Link](/api/forms/get-link) endpoint to fetch it back.
+  Unique identifier for the link. Use this with [Get Link](/api/forms/get-link), [Update Link](/api/forms/update-link), [Delete Link](/api/forms/delete-link), or the activate/deactivate endpoints.
 </ResponseField>
 
 <ResponseField name="formID" type="string">
@@ -127,11 +190,23 @@ All `prefill` keys are camelCase. Strings are trimmed; empty strings are ignored
 </ResponseField>
 
 <ResponseField name="checkoutUrl" type="string">
-  The shareable URL. Shape: `https://charitystack.com/donate/{formID}?elementid={linkID}` for fundraising forms, or `https://charitystack.com/attend/{formID}?elementid={linkID}` for event forms.
+  The shareable URL. Shape varies by `destinationType`:
+
+  - `HOSTED_PAGE_DONATE` → `https://charitystack.com/donate/{formID}?elementid={linkID}`
+  - `HOSTED_PAGE_ATTEND` → `https://charitystack.com/attend/{formID}?elementid={linkID}`
+  - `OVERLAY_*` → `{your-organization-base-url}{overlayPath}?donate&formid={formID}&elementid={linkID}` (or `?attend` for overlay attend)
 </ResponseField>
 
 <ResponseField name="name" type="string">
   The link's internal label (either what you sent, or the default `"API link — {timestamp}"`).
+</ResponseField>
+
+<ResponseField name="destinationType" type="string">
+  Echo of the destination type used (either supplied or auto-derived).
+</ResponseField>
+
+<ResponseField name="overlayPath" type="string">
+  Echo of the overlay path; empty string for hosted-page destinations.
 </ResponseField>
 
 ## Status codes
@@ -139,19 +214,19 @@ All `prefill` keys are camelCase. Strings are trimmed; empty strings are ignored
 | Code | Description |
 | --- | --- |
 | `201` | Link created successfully. |
-| `400` | Validation error — invalid JSON, unknown prefill key, bad type (e.g. `amount: true`), amount out of range, unknown frequency, fund not configured on this form, or frequency not enabled on this form. |
+| `400` | Validation error — invalid JSON, unknown prefill key, bad type, amount out of range, unknown frequency, fund not configured on this form, sponsorship/ticket mismatch with form type, overlay missing `overlayPath`, or organization missing `organizationBaseURLs`. |
 | `401` | Missing or invalid API key. |
-| `403` | Form belongs to a different merchant. |
+| `403` | Form belongs to a different organization. |
 | `404` | No form found with the given ID. |
 | `410` | Form was found but has been deleted. |
-| `500` | Internal error (e.g. merchant record is missing its canonical ID — contact support). |
+| `500` | Internal error. |
 
 ## Examples
 
 ### Basic prefilled donation link
 
 ```bash cURL
-curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/550e8400-e29b-41d4-a716-446655440000/links \
+curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links \
   -H "Authorization: Bearer cs_live_your_key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -166,39 +241,114 @@ curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/550
   }'
 ```
 
+### With custom inputs (form-level + global)
+
+```bash cURL
+curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Gala invite",
+    "prefill": {
+      "firstName": "Akif",
+      "email": "akif@example.org",
+      "amount": 100,
+      "customInputs": {
+        "T-shirt size": "M",
+        "How did you hear about us?": "Friend"
+      }
+    }
+  }'
+```
+
+### Sponsorship (PRODUCT form)
+
+```bash cURL
+curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Sponsor a city — NY",
+    "prefill": {
+      "firstName": "Akif",
+      "email": "akif@example.org",
+      "amount": 500,
+      "sponsorshipGroup": "East",
+      "sponsorshipItem": "New York"
+    }
+  }'
+```
+
+### Event ticket prefill
+
+```bash cURL
+curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Gala — VIP invite",
+    "prefill": {
+      "firstName": "Akif",
+      "email": "akif@example.org",
+      "amount": 250,
+      "ticket": "General Admission"
+    }
+  }'
+```
+
+### Overlay destination on your own site
+
+```bash cURL
+curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Site banner CTA",
+    "destinationType": "OVERLAY_DONATE",
+    "overlayPath": "/give",
+    "prefill": {
+      "fund": "General Fund",
+      "amount": 100,
+      "utmSource": "homepage-banner"
+    }
+  }'
+```
+
 **201 response**
 
 ```json
 {
   "linkID": "bc033789-1ee2-4f3f-bec5-2f108c2d65ba",
   "formID": "550e8400-e29b-41d4-a716-446655440000",
-  "checkoutUrl": "https://charitystack.com/donate/550e8400-e29b-41d4-a716-446655440000?elementid=bc033789-1ee2-4f3f-bec5-2f108c2d65ba",
-  "name": "Outreach email — May 2026"
+  "checkoutUrl": "https://your-site.org/give?donate&formid=550e8400-e29b-41d4-a716-446655440000&elementid=bc033789-1ee2-4f3f-bec5-2f108c2d65ba",
+  "name": "Site banner CTA",
+  "destinationType": "OVERLAY_DONATE",
+  "overlayPath": "/give"
 }
 ```
 
-### Campaign attribution with UTM parameters
-
-```bash cURL
-curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/550e8400-e29b-41d4-a716-446655440000/links \
-  -H "Authorization: Bearer cs_live_your_key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Facebook ad — Spring Appeal",
-    "prefill": {
-      "fund": "Education Program",
-      "amount": 100,
-      "utmSource": "facebook",
-      "utmMedium": "paid-social",
-      "utmCampaign": "spring-2026"
-    }
-  }'
-```
-
-### Validation error response
+### Validation error responses
 
 ```json
 {
   "error": "prefill.frequency 'QUARTERLY' is not enabled on this form (enabled: ['ONE_TIME', 'MONTHLY'])"
+}
+```
+
+```json
+{
+  "error": "prefill.customInputs['shirtsize'] does not match any customInput on this form or globalCustomInput on the organization. Known IDs/titles: ['T-shirt size', 'tshirt-id-123', 'How did you hear about us?']"
+}
+```
+
+```json
+{
+  "error": "prefill.sponsorshipGroup 'NonExistent' is not a productGroup on this form (available: ['East', 'Northwest'])"
+}
+```
+
+```json
+{
+  "error": "Overlay destinations require organizationBaseURLs to be configured on the organization. Configure your website URL in Settings → Organization in the dashboard first."
 }
 ```

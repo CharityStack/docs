@@ -1,0 +1,100 @@
+---
+title: "GET /v1/organization — get your organization config"
+sidebarTitle: "Get Organization"
+description: "Discover the organization-level configuration needed to build prefilled checkout links: organizationBaseURLs (for overlay destinations) and globalCustomInputs (organization-wide checkout fields)."
+---
+
+Returns the configuration fields a public-API integrator needs to build prefilled checkout links beyond the basic donor-info set — overlay destinations (which require the organization's website to be configured) and global custom inputs (organization-wide checkout fields that appear on every form's checkout in addition to each form's own `customInputs`).
+
+This is a discovery endpoint. The response is cacheable per organization — fetch once at startup and reuse across many link creations. The response **deliberately excludes** internal fields (organization IDs, processor config, billing, etc.).
+
+## Discovery flow
+
+The intended flow when building a prefilled link is:
+
+1. **`GET /v1/organization`** — discover `organizationBaseURLs` (overlay availability + base URL) and `globalCustomInputs` (organization-level checkout fields).
+2. **`GET /v1/forms/{formID}`** — discover form-level `customInputs`, configured funds, frequencies, tickets, and sponsorship `productGroups`.
+3. **`POST /v1/forms/{formID}/links`** — create the link, passing prefill values keyed by titles you saw in steps 1 + 2.
+
+## Endpoint
+
+```text
+GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/organization
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+No request body or parameters — the organization is inferred from the API key.
+
+## Response
+
+<ResponseField name="organizationName" type="string">
+  The friendly name of your organization (e.g. `".NGO Charities"`). Same value the API key was issued for.
+</ResponseField>
+
+<ResponseField name="organizationBaseURLs" type="string[]">
+  Website domains configured for this organization. The first entry is used as the base for `OVERLAY_*` checkout link URLs. An empty array means overlay links are not currently available — configure a website URL in **Settings → Organization** in the dashboard to enable them.
+</ResponseField>
+
+<ResponseField name="globalCustomInputs" type="object[]">
+  Organization-level custom inputs that appear on every form's checkout, in addition to each form's own `customInputs`. Use the `id` or `title` of each as a key under `prefill.customInputs` when creating a link.
+
+  Each object has:
+  - `id` *(string)* — stable identifier; preferred as a `customInputs` key for forward-compatibility.
+  - `title` *(string)* — human-readable label shown to donors. Also accepted as a `customInputs` key.
+  - `inputType` *(string)* — one of `SHORT_TEXT_INPUT`, `LONG_TEXT_INPUT`, `SINGLE_SELECTION_DROPDOWN`, `MULTI_SELECTION_DROPDOWN`.
+  - `required` *(boolean)*.
+  - `options` *(string[])* — choices for dropdown-typed inputs; empty for text inputs.
+</ResponseField>
+
+## Status codes
+
+| Code | Description |
+| --- | --- |
+| `200` | Organization config returned. |
+| `401` | Missing or invalid API key. |
+| `404` | The organization record for this API key wasn't found. Contact support if you see this — it usually means a migration/data-drift issue. |
+| `500` | Internal error. |
+
+## Example
+
+```bash cURL
+curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/organization \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+**200 response**
+
+```json
+{
+  "organizationName": ".NGO Charities",
+  "organizationBaseURLs": [
+    "https://www.example-charity.org"
+  ],
+  "globalCustomInputs": [
+    {
+      "id": "cc2kksq",
+      "title": "How did you hear about us?",
+      "inputType": "SHORT_TEXT_INPUT",
+      "required": false,
+      "options": []
+    }
+  ]
+}
+```
+
+## What's NOT exposed
+
+By design, this endpoint returns only the fields needed to build prefilled links. It does **not** include:
+
+- Internal IDs (organization ID, Clerk org ID, processor account IDs)
+- API key material
+- Payment processor configuration (Stripe, Finix)
+- Billing details, fee schedules, tax IDs
+- Onboarding state, payout details
+
+If you need any of these, log into the dashboard rather than using the public API — they're administrative settings, not integration data.

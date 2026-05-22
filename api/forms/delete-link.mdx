@@ -1,0 +1,65 @@
+---
+title: "DELETE /v1/forms/{formID}/links/{linkID} — delete a prefilled checkout link"
+sidebarTitle: "Delete Link"
+description: "Permanently remove a prefilled checkout link. Hard delete — use Deactivate for a soft-delete that preserves the row for audit."
+---
+
+The Delete Link endpoint **hard-deletes** a prefilled checkout link. The row is removed from storage entirely. Donors who hit the URL afterwards will see the form without prefill applied — the link's `elementid` query parameter resolves to nothing, but the form itself still loads.
+
+For a soft-delete that keeps the row visible in [List Links](/api/forms/list-links) under `?active=false` and can be undone, use [Deactivate](/api/forms/deactivate-link) instead.
+
+## Endpoint
+
+```text
+DELETE https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links/{linkID}
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+## Path parameters
+
+<ParamField path="formID" type="string" required>
+  The parent form's unique identifier.
+</ParamField>
+
+<ParamField path="linkID" type="string" required>
+  The link's unique identifier.
+</ParamField>
+
+## Response
+
+`204 No Content` with an empty body on success.
+
+## Status codes
+
+| Code | Description |
+| --- | --- |
+| `204` | Link deleted. |
+| `401` | Missing or invalid API key. |
+| `403` | Link belongs to a different organization. |
+| `404` | No link found with the given ID, or not attached to the supplied `formID` (also returned if the link was already deleted). |
+| `500` | Internal error. |
+
+## Example
+
+```bash cURL
+curl -X DELETE https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links/{linkID} \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+Verify the delete with a follow-up Get Link — expect 404:
+
+```bash cURL
+curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links/{linkID} \
+  -H "Authorization: Bearer cs_live_your_key"
+```
+
+**404 response**
+
+```json
+{ "error": "Link not found" }
+```

@@ -50,6 +50,12 @@
         "tab": "API Reference",
         "groups": [
           {
+            "group": "Organization",
+            "pages": [
+              "api/organization/get"
+            ]
+          },
+          {
             "group": "Payments",
             "pages": [
               "api/payments/list",
@@ -90,14 +96,7 @@
               "api/forms/create-checkout-link",
               "api/forms/update-link",
               "api/forms/delete-link",
-              "api/forms/activate-link",
-              "api/forms/deactivate-link"
-            ]
-          },
-          {
-            "group": "Organization",
-            "pages": [
-              "api/organization/get"
+              "api/forms/toggle-link"
             ]
           },
           {

@@ -1,0 +1,109 @@
+---
+title: "Activate or deactivate a prefilled checkout link"
+sidebarTitle: "Toggle Link"
+description: "Flip a link's `active` flag. Two endpoints — `/activate` sets it to true, `/deactivate` sets it to false. Both are idempotent."
+---
+
+Toggle the `active` flag on a prefilled checkout link. **Activate** sets `active: true`; **deactivate** sets `active: false`. Both are idempotent — calling on a link already in the target state returns `200` with the current row, no state change.
+
+Deactivation is the soft-delete path — the row remains stored and visible via [List Links](/api/forms/list-links) under `?active=false`, and can be re-enabled by calling activate. For permanent removal, use [Delete Link](/api/forms/delete-link).
+
+## Endpoints
+
+<Tabs>
+  <Tab title="Activate">
+    ```text
+    POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links/{linkID}/activate
+    ```
+
+    Sets `active: true` on the link. Response always returns `active: true`.
+  </Tab>
+  <Tab title="Deactivate">
+    ```text
+    POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links/{linkID}/deactivate
+    ```
+
+    Sets `active: false` on the link. Response always returns `active: false`.
+  </Tab>
+</Tabs>
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+## Path parameters
+
+<ParamField path="formID" type="string" required>
+  The parent form's unique identifier.
+</ParamField>
+
+<ParamField path="linkID" type="string" required>
+  The link's unique identifier.
+</ParamField>
+
+## Request body
+
+None — the path identifies the link and the verb (activate vs deactivate) identifies the target state.
+
+## Response
+
+<ResponseField name="linkID" type="string">
+  Unique identifier for the link.
+</ResponseField>
+
+<ResponseField name="formID" type="string">
+  The parent form's ID.
+</ResponseField>
+
+<ResponseField name="active" type="boolean">
+  `true` after activate, `false` after deactivate. If the link was already in the target state, this still reflects the current value.
+</ResponseField>
+
+## Status codes
+
+| Code | Description |
+| --- | --- |
+| `200` | Link is in the target state (newly toggled or already there). |
+| `401` | Missing or invalid API key. |
+| `403` | Link belongs to a different organization. |
+| `404` | No link found with the given ID, or not attached to the supplied `formID`. |
+| `500` | Internal error. |
+
+## Examples
+
+<Tabs>
+  <Tab title="Activate">
+    ```bash cURL
+    curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links/{linkID}/activate \
+      -H "Authorization: Bearer cs_live_your_key"
+    ```
+
+    **200 response**
+
+    ```json
+    {
+      "linkID": "bc033789-1ee2-4f3f-bec5-2f108c2d65ba",
+      "formID": "550e8400-e29b-41d4-a716-446655440000",
+      "active": true
+    }
+    ```
+  </Tab>
+  <Tab title="Deactivate">
+    ```bash cURL
+    curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links/{linkID}/deactivate \
+      -H "Authorization: Bearer cs_live_your_key"
+    ```
+
+    **200 response**
+
+    ```json
+    {
+      "linkID": "bc033789-1ee2-4f3f-bec5-2f108c2d65ba",
+      "formID": "550e8400-e29b-41d4-a716-446655440000",
+      "active": false
+    }
+    ```
+  </Tab>
+</Tabs>

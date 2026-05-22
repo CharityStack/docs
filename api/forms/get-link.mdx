@@ -27,7 +27,7 @@ GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/lin
 </ParamField>
 
 <ParamField path="linkID" type="string" required>
-  The link's unique identifier, returned by [Create Link](/api/forms/create-link).
+  The link's unique identifier, returned by [Create Link](/api/forms/create-checkout-link).
 </ParamField>
 
 ## Response
@@ -45,7 +45,7 @@ GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/lin
 </ResponseField>
 
 <ResponseField name="prefill" type="object">
-  The prefill payload, translated back to the same camelCase keys you sent on create. Keys are omitted if they weren't set. `customInputs` are keyed by their original question title (or the storage key as a fallback if the input was renamed/deleted on the form after the link was created). See [Create Link — prefill whitelist](/api/forms/create-link) for the full set.
+  The prefill payload, translated back to the same camelCase keys you sent on create. Keys are omitted if they weren't set. `customInputs` are keyed by their original question title (or the storage key as a fallback if the input was renamed/deleted on the form after the link was created). See [Create Link — prefill whitelist](/api/forms/create-checkout-link) for the full set.
 </ResponseField>
 
 <ResponseField name="checkoutUrl" type="string">
@@ -61,7 +61,7 @@ GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/lin
 </ResponseField>
 
 <ResponseField name="active" type="boolean">
-  Whether the link is active. Inactive links are visible via [List Links](/api/forms/list-links) with `?active=false` and can be re-enabled via [Activate](/api/forms/activate-link).
+  Whether the link is active. Inactive links are visible via [List Links](/api/forms/list-links) with `?active=false` and can be re-enabled via [Activate](/api/forms/toggle-link).
 </ResponseField>
 
 <ResponseField name="createdAt" type="string">

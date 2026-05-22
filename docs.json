@@ -87,11 +87,10 @@
             "pages": [
               "api/forms/list-links",
               "api/forms/get-link",
-              "api/forms/create-link",
+              "api/forms/create-checkout-link",
               "api/forms/update-link",
               "api/forms/delete-link",
-              "api/forms/activate-link",
-              "api/forms/deactivate-link"
+              "api/forms/toggle-link"
             ]
           },
           {

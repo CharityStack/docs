@@ -1,12 +1,12 @@
 ---
 title: "DELETE /v1/forms/{formID}/links/{linkID} — delete a prefilled checkout link"
-sidebarTitle: "Delete Prefilled-Checkout Link"
+sidebarTitle: "Delete Link"
 description: "Permanently remove a prefilled checkout link. Hard delete — use Deactivate for a soft-delete that preserves the row for audit."
 ---
 
 The Delete Link endpoint **hard-deletes** a prefilled checkout link. The row is removed from storage entirely. Donors who hit the URL afterwards will see the form without prefill applied — the link's `elementid` query parameter resolves to nothing, but the form itself still loads.
 
-For a soft-delete that keeps the row visible in [List Links](/api/forms/list-links) under `?active=false` and can be undone, use [Deactivate](/api/forms/toggle-link) instead.
+For a soft-delete that keeps the row visible in [List Links](/api/forms/list-links) under `?active=false` and can be undone, use [Deactivate](/api/forms/deactivate-link) instead.
 
 ## Endpoint
 

@@ -1,12 +1,12 @@
 ---
 title: "PUT /v1/forms/{formID}/links/{linkID} — update a prefilled checkout link"
-sidebarTitle: "Update Prefilled-Checkout Link"
+sidebarTitle: "Update Link"
 description: "Replace a link's name, prefill payload, destination type, and overlay path. Full-record semantics — any field omitted from the body is treated as cleared, not preserved."
 ---
 
 The Update Link endpoint replaces the editable fields of an existing link. It uses **full-record semantics**: fields omitted from the body are cleared, not preserved. If you want to keep existing values, include them explicitly in the request.
 
-Audit fields (`createdAt`, the original creator) and the link's `active` state are preserved across updates. To flip `active`, use [Activate](/api/forms/toggle-link) or [Deactivate](/api/forms/toggle-link) instead.
+Audit fields (`createdAt`, the original creator) and the link's `active` state are preserved across updates. To flip `active`, use [Activate](/api/forms/activate-link) or [Deactivate](/api/forms/deactivate-link) instead.
 
 The parent form cannot be changed — the `formID` in the URL must match the link's stored parent.
 

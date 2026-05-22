@@ -90,7 +90,8 @@
               "api/forms/create-checkout-link",
               "api/forms/update-link",
               "api/forms/delete-link",
-              "api/forms/toggle-link"
+              "api/forms/activate-link",
+              "api/forms/deactivate-link"
             ]
           },
           {

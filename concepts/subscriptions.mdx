@@ -3,7 +3,7 @@ title: "Recurring subscription management with CharityStack"
 description: "Learn how CharityStack models recurring donations as subscriptions, what fields each record contains, and how to list, retrieve, and update them via the API."
 ---
 
-A subscription represents a recurring donation that charges a donor automatically on a set schedule — daily, weekly, monthly, or annually. When you integrate with the subscriptions API, you can build features like donor retention dashboards, automated cancellation flows, or dynamic giving-amount adjustments without requiring donors to update their information manually.
+A subscription represents a recurring donation that charges a donor automatically on a set schedule — daily, weekly, monthly, or annually. When you integrate with the subscriptions API, you can build features like donor retention dashboards, automated cancellation flows, payment method update flows, or dynamic giving-amount adjustments without requiring donors to update their information manually.
 
 ## The subscription object
 
@@ -42,9 +42,9 @@ The following fields are returned by `GET /v1/subscriptions` and `GET /v1/subscr
 
 ## What you can do
 
-The subscriptions API supports three categories of operations:
+The subscriptions API supports four categories of operations:
 
-<CardGroup cols={3}>
+<CardGroup cols={2}>
   <Card title="List subscriptions" icon="list" href="/api/subscriptions/list">
     Retrieve all subscriptions for your account, optionally filtered by status.
   </Card>
@@ -54,11 +54,14 @@ The subscriptions API supports three categories of operations:
   <Card title="Update a subscription" icon="pen" href="/api/subscriptions/update">
     Cancel a subscription or change the recurring amount.
   </Card>
+  <Card title="Create a payment method update link" icon="credit-card" href="/api/subscriptions/payment-method-update-link">
+    Generate a hosted link where a donor can securely update the card or bank account for an active subscription.
+  </Card>
 </CardGroup>
 
 ## Updating subscriptions
 
-You can modify an active subscription in two ways: cancel it or change the recurring amount. Both operations use `PUT /v1/subscriptions/{id}` with a JSON body.
+You can modify an active subscription by cancelling it, changing the recurring amount, or creating a hosted payment method update link for the donor. Status and amount updates use `PUT /v1/subscriptions/{id}` with a JSON body.
 
 <Tabs>
   <Tab title="Cancel a subscription">
@@ -82,6 +85,16 @@ You can modify an active subscription in two ways: cancel it or change the recur
     ```
   </Tab>
 </Tabs>
+
+## Updating payment methods
+
+To update a subscription's payment method, call `POST /v1/subscriptions/{id}/payment-method-update-link`. CharityStack returns a short-lived hosted URL that lets the donor save a new card or bank account without your server handling sensitive payment details.
+
+The hosted page supports `CARD` and `PAY_BY_BANK` updates for subscriptions processed by Stripe or Finix. Stripe payment details are collected through Stripe's client-side setup flows. Finix card details are collected through Finix tokenization fields, and Finix bank details are collected through Plaid Link.
+
+<Note>
+  Give the link only to the donor after you have authenticated them in your own app. The hosted CharityStack page is protected by the session token in the URL, but the partner app controls who receives the link.
+</Note>
 
 <Warning>
   Cancellation is immediate and irreversible through the API. The subscription `status` will change to `CANCELLED` and no further charges will be made. To restart a cancelled subscription, the donor must re-enroll through a donation form.

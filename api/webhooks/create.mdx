@@ -42,6 +42,7 @@ POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks
   | `subscription.created` | A new recurring subscription starts |
   | `subscription.updated` | A subscription is modified |
   | `subscription.cancelled` | A subscription is cancelled |
+  | `subscription.payment_method_updated` | A subscription payment method is updated through a hosted update link |
   | `contact.created` | A new contact is added |
   | `contact.updated` | A contact's information is updated |
   | `form.created` | A new donation form is created |
@@ -118,7 +119,7 @@ curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks 
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://yourapp.com/webhooks/charitystack",
-    "events": ["donation.created", "subscription.created", "subscription.cancelled"],
+    "events": ["donation.created", "subscription.created", "subscription.payment_method_updated"],
     "description": "Production webhook for donation notifications"
   }'
 ```
@@ -132,7 +133,7 @@ curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks 
   "events": [
     "donation.created",
     "subscription.created",
-    "subscription.cancelled"
+    "subscription.payment_method_updated"
   ],
   "status": "ACTIVE",
   "description": "Production webhook for donation notifications",

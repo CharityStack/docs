@@ -40,6 +40,10 @@ All body fields are optional. Send only the fields you want to change.
   Replacement list of event types to subscribe to. This fully replaces the current list — include all events you want, not just the new ones.
 </ParamField>
 
+<Note>
+  Supported events are `donation.created`, `donation.updated`, `subscription.created`, `subscription.updated`, `subscription.cancelled`, `subscription.payment_method_updated`, `contact.created`, `contact.updated`, `form.created`, and `form.updated`.
+</Note>
+
 <ParamField body="description" type="string">
   Updated human-readable description for this webhook.
 </ParamField>
@@ -86,6 +90,15 @@ curl -X PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks/w
   }'
 ```
 
+```bash Subscribe to payment method updates
+curl -X PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks/wh_01hx4kz9mntd8vr2bpqe5ycf3a \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "events": ["donation.created", "subscription.created", "subscription.payment_method_updated"]
+  }'
+```
+
 </CodeGroup>
 
 ```json Sample response (200)
@@ -95,7 +108,7 @@ curl -X PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks/w
   "events": [
     "donation.created",
     "subscription.created",
-    "subscription.cancelled"
+    "subscription.payment_method_updated"
   ],
   "status": "ACTIVE",
   "description": "Production webhook for donation notifications",

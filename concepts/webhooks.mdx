@@ -32,10 +32,15 @@ Subscribe to any combination of the events below when you register a webhook.
 | `subscription.created` | A new recurring subscription is started |
 | `subscription.updated` | A subscription is modified (e.g., amount changed) |
 | `subscription.cancelled` | A subscription is cancelled |
+| `subscription.payment_method_updated` | A subscription payment method is updated through a hosted update link |
 | `contact.created` | A new donor contact is added |
 | `contact.updated` | A contact's information is updated |
 | `form.created` | A new form is created |
 | `form.updated` | A form's configuration changes |
+
+<Note>
+  When a hosted payment method update link completes, CharityStack emits `subscription.payment_method_updated` and also emits `subscription.updated` for backward compatibility. The dedicated payment method event includes a safe summary and excludes provider identifiers.
+</Note>
 
 ## Registering a webhook
 

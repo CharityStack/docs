@@ -67,7 +67,8 @@
             "pages": [
               "api/subscriptions/list",
               "api/subscriptions/get",
-              "api/subscriptions/update"
+              "api/subscriptions/update",
+              "api/subscriptions/payment-method-update-link"
             ]
           },
           {

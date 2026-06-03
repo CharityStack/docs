@@ -1,0 +1,163 @@
+---
+title: "POST /v1/subscriptions/{id}/payment-method-update-link - create a hosted update link"
+sidebarTitle: "Create Payment Method Update Link"
+description: "Create a short-lived hosted CharityStack link that lets a donor update the payment method for an active recurring subscription."
+---
+
+The `POST /v1/subscriptions/{id}/payment-method-update-link` endpoint creates a short-lived hosted page where a donor can update only the payment method for an active subscription. This endpoint requires the `subscriptions:write` permission on your API key.
+
+Use this endpoint when your integration has authenticated the donor in your own app and you want CharityStack to securely collect the new card or bank account details.
+
+<Warning>
+  The returned `url` contains a bearer token for the update session. Treat it like a temporary secret. Do not log it, publish it, or send it to anyone except the donor who should update the subscription.
+</Warning>
+
+## Request
+
+```bash
+POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/subscriptions/{id}/payment-method-update-link
+```
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`.
+</ParamField>
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `application/json`.
+</ParamField>
+
+### Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the active subscription to update.
+</ParamField>
+
+### Request body
+
+All body fields are optional. If you omit the body, CharityStack creates a 60-minute link that allows card and bank updates.
+
+<ParamField body="delivery" type="string" default="link">
+  Delivery mode for the update session. The only supported value is `link`.
+</ParamField>
+
+<ParamField body="returnUrl" type="string">
+  HTTPS URL where the hosted page can send the donor after success or cancellation. `http://localhost`, `http://127.0.0.1`, and `http://[::1]` are accepted for local development only. CharityStack stores the URL origin at link creation and validates it before rendering the return button.
+</ParamField>
+
+<ParamField body="expiresInMinutes" type="integer" default="60">
+  Link lifetime in minutes. Accepted values are `30` through `1440`.
+</ParamField>
+
+<ParamField body="allowedPaymentMethods" type="array[string]" default='["CARD", "PAY_BY_BANK"]'>
+  Payment methods the donor may choose on the hosted page. Accepted values are `CARD` and `PAY_BY_BANK`.
+</ParamField>
+
+## Response
+
+### 201 - created
+
+<ResponseField name="id" type="string">
+  Unique ID for the payment method update session.
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Hosted CharityStack URL for the donor. This URL includes the session token.
+</ResponseField>
+
+<ResponseField name="expiresAt" type="string">
+  ISO 8601 timestamp when the link expires.
+</ResponseField>
+
+<ResponseField name="subscription" type="object">
+  Safe summary of the subscription attached to the update session.
+
+  <Expandable title="Subscription summary properties">
+    <ResponseField name="id" type="string">
+      Unique identifier for the subscription.
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      Subscription status. Payment method update links can only be created for `ACTIVE` subscriptions.
+    </ResponseField>
+    <ResponseField name="paymentProcessor" type="string">
+      Current processor for the subscription. Supported values for this flow are `STRIPE` and `FINIX`.
+    </ResponseField>
+    <ResponseField name="paymentMethod" type="string">
+      Current payment method for the subscription, such as `CARD` or `PAY_BY_BANK`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/subscriptions/sub_01HABC1234MNOPQR/payment-method-update-link \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "delivery": "link",
+    "returnUrl": "https://partner.example.com/subscriptions/sub_01HABC1234MNOPQR",
+    "expiresInMinutes": 60,
+    "allowedPaymentMethods": ["CARD", "PAY_BY_BANK"]
+  }'
+```
+
+</CodeGroup>
+
+```json Sample response
+{
+  "id": "pmus_f2d5a4c3b6e748c9a1b2d3e4f5a6b7c8",
+  "url": "https://charitystack.com/portal/payment-method-update/pmus_f2d5a4c3b6e748c9a1b2d3e4f5a6b7c8?token=pmtok_opaque_secret",
+  "expiresAt": "2026-06-03T19:45:00Z",
+  "subscription": {
+    "id": "sub_01HABC1234MNOPQR",
+    "status": "ACTIVE",
+    "paymentProcessor": "STRIPE",
+    "paymentMethod": "CARD"
+  }
+}
+```
+
+## Hosted update flow
+
+The donor opens the returned hosted URL and chooses one of the allowed payment methods. The hosted page collects payment details with the payment processor's client-side tools:
+
+| Processor | Method | Collection flow |
+|-----------|--------|-----------------|
+| `STRIPE` | `CARD` | Stripe Elements creates and confirms a SetupIntent. |
+| `STRIPE` | `PAY_BY_BANK` | Stripe hosted bank account collection links a US bank account and confirms the SetupIntent when instant verification succeeds. |
+| `FINIX` | `CARD` | Finix hosted tokenization fields return a Finix token, which CharityStack uses to create the payment instrument. |
+| `FINIX` | `PAY_BY_BANK` | Plaid Link returns a Plaid public token and selected account ID. CharityStack exchanges the token with Plaid Auth and creates the Finix bank payment instrument server-side. |
+
+<Note>
+  The hosted page never renders raw bank account or routing number inputs. The Public API also never receives raw card numbers, raw bank account numbers, or raw routing numbers.
+</Note>
+
+Stripe bank updates complete only when Stripe returns a successful instant-verification SetupIntent. If the bank account requires microdeposit verification, the hosted page leaves the update session pending instead of completing the payment method update.
+
+## Completion and webhooks
+
+When the donor successfully saves a new payment method, CharityStack updates the subscription payment fields and marks the update session as `COMPLETED`. The link cannot be reused after completion.
+
+Completion emits two webhook events:
+
+| Event | Purpose |
+|-------|---------|
+| `subscription.payment_method_updated` | Dedicated payment-method update event with a safe summary payload. |
+| `subscription.updated` | Backward-compatible subscription update event for existing webhook consumers. |
+
+The `subscription.payment_method_updated` payload excludes provider identifiers such as payment instrument IDs, buyer/customer IDs, Stripe account IDs, Stripe SetupIntent IDs, and Finix instrument IDs.
+
+## Response codes
+
+| Code | Meaning |
+|------|---------|
+| `201` | Hosted update link created. |
+| `400` | Invalid request body, unsupported payment method, invalid `returnUrl`, invalid `expiresInMinutes`, or unsupported `delivery`. |
+| `401` | Missing or invalid API key. |
+| `403` | Missing `subscriptions:write` permission or subscription belongs to another merchant account. |
+| `404` | Subscription not found. |
+| `409` | Subscription is not active. |

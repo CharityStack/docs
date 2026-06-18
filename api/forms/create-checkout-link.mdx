@@ -1,7 +1,7 @@
 ---
 title: "POST /v1/forms/{formID}/links — create a prefilled checkout link"
 sidebarTitle: "Create Link"
-description: "Generate a unique checkout URL with donor info, amount, frequency, fund, custom inputs, sponsorship selection, ticket selection, UTM parameters, and overlay destination — all prefilled and ready to share."
+description: "Generate a unique checkout URL with donor info, amount, frequency, fund, custom inputs, sponsorship selection, ticket selection, event attendee details, UTM parameters, and overlay destination — all prefilled and ready to share."
 ---
 
 The Create Link endpoint produces a shareable URL that opens the form's checkout with fields pre-populated. The donor data is stored server-side under a `linkID` — the URL itself is short and doesn't expose the prefill values in query parameters.
@@ -157,6 +157,26 @@ Available when the form's `formType` is `EVENT`.
   Ticket name to pre-select, e.g. `"General Admission"`. Must match a configured ticket on the event form. Tickets are stored on the event's element record — fetch the form to see configured ticket names.
 </ParamField>
 
+### Prefill — attendees (EVENT forms only)
+
+Available when the form's `formType` is `EVENT`. Pre-populates the built-in **First Name / Last Name / Email** fields on the **Attendee Info** step. These are distinct from the donor identity fields above: the donor is the purchaser, attendees are the people the tickets are for.
+
+<ParamField body="prefill.attendees" type="object[]">
+  Positional array of attendees. `attendees[0]` fills the first attendee, `attendees[1]` the second, and so on — matching the order seats are added at checkout. Every field in each entry is optional. Maximum 50 attendees.
+
+  Each entry accepts:
+
+  - `firstName` — attendee's first name
+  - `lastName` — attendee's last name
+  - `email` — attendee's email
+
+  Only these built-in fields are supported. Attendee *custom questions* (e.g. Age, Gender) are not prefillable yet.
+</ParamField>
+
+<Tip>
+  Pair `attendees` with `ticket`. Setting `ticket` pre-selects the event's ticket so the buyer lands directly on a populated **Attendee Info** step — ideal for "register a known member" links where one attendee maps to one ticket.
+</Tip>
+
 ### Prefill — UTM parameters
 
 <ParamField body="prefill.utmSource" type="string">
@@ -292,6 +312,23 @@ curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{fo
       "email": "akif@example.org",
       "amount": 250,
       "ticket": "General Admission"
+    }
+  }'
+```
+
+### Event attendee prefill
+
+```bash cURL
+curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Member registration — Jane Doe",
+    "prefill": {
+      "ticket": "General Admission",
+      "attendees": [
+        { "firstName": "Jane", "lastName": "Doe", "email": "jane@example.org" }
+      ]
     }
   }'
 ```

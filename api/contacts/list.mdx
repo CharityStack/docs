@@ -20,7 +20,7 @@ GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts
 
 ## Query parameters
 
-<ParamField query="limit" type="number" default="50">
+<ParamField query="limit" type="number" default="100">
   Maximum number of contacts to return. Accepted range is 1–100.
 </ParamField>
 
@@ -56,7 +56,7 @@ GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts
     <ResponseField name="emails" type="object[]">
       List of email address objects.
       <Expandable title="email object">
-        <ResponseField name="value" type="string">
+        <ResponseField name="email" type="string">
           The email address.
         </ResponseField>
         <ResponseField name="is_primary" type="boolean">

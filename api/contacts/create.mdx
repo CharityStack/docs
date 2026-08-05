@@ -1,0 +1,109 @@
+---
+title: "POST /v1/contacts — create a contact record"
+sidebarTitle: "Create Contact"
+description: "Add a contact to your CharityStack account with name, emails, phones, addresses, and communication consent. Returns 409 Conflict if an email already belongs to another of your contacts."
+---
+
+The Create Contact endpoint adds a new contact record to your CharityStack account. `firstName` and `lastName` are required; all other fields are optional. Email uniqueness is enforced per organization — if an email in the request already belongs to another of your contacts, the request returns `409 email_taken` with the existing contact's ID.
+
+## Endpoint
+
+```
+POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+## Request body
+
+<ParamField body="firstName" type="string" required>
+  Contact's first name. Non-blank.
+</ParamField>
+
+<ParamField body="lastName" type="string" required>
+  Contact's last name. Non-blank.
+</ParamField>
+
+<ParamField body="organizationName" type="string">
+  Organization or company the contact belongs to.
+</ParamField>
+
+<ParamField body="emails" type="object[]">
+  Email entries. Duplicates (case-insensitive) are rejected.
+  <Expandable title="email entry">
+    <ParamField body="email" type="string" required>The email address.</ParamField>
+    <ParamField body="is_primary" type="boolean">Exactly one entry may be primary; when none is marked, the first becomes primary.</ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="phones" type="object[]">
+  Phone entries. Values are normalized to E.164 (e.g. `+34613628904`); bare
+  national numbers are treated as US. Unparseable numbers return `400`.
+  <Expandable title="phone entry">
+    <ParamField body="value" type="string" required>The phone number.</ParamField>
+    <ParamField body="is_primary" type="boolean">Exactly one entry may be primary.</ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="addresses" type="object[]">
+  Address entries.
+  <Expandable title="address entry">
+    <ParamField body="line1" type="string">Street line 1.</ParamField>
+    <ParamField body="line2" type="string">Street line 2.</ParamField>
+    <ParamField body="city" type="string">City.</ParamField>
+    <ParamField body="region" type="string">State / region.</ParamField>
+    <ParamField body="postal" type="string">Postal code.</ParamField>
+    <ParamField body="country" type="string">Country.</ParamField>
+    <ParamField body="is_primary" type="boolean">Exactly one entry may be primary.</ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="emailConsent" type="string">
+  `SUBSCRIBED` or `UNSUBSCRIBED`. Omit to use the creation default:
+  `SUBSCRIBED` (email is an opt-out regime).
+</ParamField>
+
+<ParamField body="smsConsent" type="string">
+  `SUBSCRIBED` or `UNSUBSCRIBED`. Omit to use the creation default:
+  `NEVER_SUBSCRIBED` (SMS is an opt-in regime — only set `SUBSCRIBED` when
+  you have collected explicit SMS consent).
+</ParamField>
+
+## Response
+
+On success returns `201` with the created contact:
+
+<ResponseField name="contact" type="object" required>
+  The full created contact record, in the same shape as
+  [Get Contact](/api/contacts/get) — including its generated `id`.
+</ResponseField>
+
+## Errors
+
+| Status | Code | Meaning |
+|--------|------|---------|
+| 400 | `validation_failed` | Missing/blank name, unknown field, invalid email/phone, duplicate entries, or more than one primary. |
+| 401 | — | Missing or invalid API key. |
+| 409 | `email_taken` | An email in the request already belongs to another of your contacts. The response includes `existingContactID`. |
+
+## Example
+
+```bash
+curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Ali",
+    "lastName": "Ahmed",
+    "emails": [{"email": "ali@example.com", "is_primary": true}],
+    "phones": [{"value": "+34613628904"}]
+  }'
+```
+
+<Note>
+  Successful creates emit the `contact.created` webhook event.
+</Note>

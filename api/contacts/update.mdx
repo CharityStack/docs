@@ -4,7 +4,7 @@ sidebarTitle: "Update Contact"
 description: "Update a contact's profile — name, organization, emails, phones, addresses — and email/SMS communication consent. Partial updates: only the fields you send are applied."
 ---
 
-The Update Contact endpoint modifies an existing contact. It uses **partial-update semantics**: only the fields present in the request body are applied, and unknown fields are rejected with `400`. The contact must belong to your merchant account — attempting to update a contact owned by another merchant returns `403 Forbidden`.
+The Update Contact endpoint modifies an existing contact. It uses **partial-update semantics**: only the fields present in the request body are applied — except `firstName` and `lastName`, which are required on every request — and unknown fields are rejected with `400`. The contact must belong to your merchant account — attempting to update a contact owned by another merchant returns `403 Forbidden`.
 
 ## Endpoint
 
@@ -26,13 +26,12 @@ PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts/{id}
 
 ## Request body
 
-<ParamField body="firstName" type="string">
-  Contact's first name. May be changed but never blanked — omitting it keeps
-  the stored value.
+<ParamField body="firstName" type="string" required>
+  Contact's first name. Required on every request; non-blank.
 </ParamField>
 
-<ParamField body="lastName" type="string">
-  Contact's last name. Same rules as `firstName`.
+<ParamField body="lastName" type="string" required>
+  Contact's last name. Required on every request; non-blank.
 </ParamField>
 
 <ParamField body="organizationName" type="string">
@@ -105,7 +104,7 @@ On success returns the updated Contact object:
 
 | Status | Code | Meaning |
 |--------|------|---------|
-| 400 | `validation_failed` | Unknown field, invalid email/phone, duplicate entries, more than one primary, or blanked name. |
+| 400 | `validation_failed` | Missing/blank name, unknown field, invalid email/phone, duplicate entries, or more than one primary. |
 | 401 | — | Missing or invalid API key. |
 | 403 | — | Contact belongs to a different merchant account. |
 | 404 | — | Contact not found. |
@@ -134,7 +133,7 @@ curl -X PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts/c
 curl -X PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts/contact_123 \
   -H "Authorization: Bearer cs_live_your_key" \
   -H "Content-Type: application/json" \
-  -d '{"emailConsent": "UNSUBSCRIBED"}'
+  -d '{"firstName": "Ali", "lastName": "Ahmed", "emailConsent": "UNSUBSCRIBED"}'
 ```
 
 <Note>

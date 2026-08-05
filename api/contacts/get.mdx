@@ -59,7 +59,7 @@ On success the endpoint returns a single Contact object directly (not wrapped in
 <ResponseField name="phones" type="object[]">
   List of phone number objects.
   <Expandable title="phone object">
-    <ResponseField name="value" type="string">The phone number (digits only).</ResponseField>
+    <ResponseField name="value" type="string">The phone number (E.164, e.g. `+34613628904`; legacy rows may carry older formats).</ResponseField>
     <ResponseField name="is_primary" type="boolean">Whether this is the primary phone.</ResponseField>
   </Expandable>
 </ResponseField>
@@ -84,6 +84,58 @@ On success the endpoint returns a single Contact object directly (not wrapped in
 <ResponseField name="totalTransactionValue" type="number">
   Lifetime total transaction value in dollars.
 </ResponseField>
+
+<ResponseField name="emailConsent" type="string">
+  `SUBSCRIBED`, `UNSUBSCRIBED`, `NEVER_SUBSCRIBED` or `UNKNOWN`. Always
+  present — derived server-side with suppression rules applied, so a contact
+  the platform will not send to never reads as subscribed.
+</ResponseField>
+
+<ResponseField name="smsConsent" type="string">
+  Same enum and derivation rules as `emailConsent`. SMS is an opt-in regime.
+</ResponseField>
+
+<ResponseField name="communicationConsent" type="boolean">
+  Master consent flag, derived alongside the channel enums.
+</ResponseField>
+
+<ResponseField name="donor_status" type="string">
+  Read-only. Computed giving status — e.g. `new_donor`, `repeat_donor`,
+  `active_recurring`, `churned_recurring`.
+</ResponseField>
+
+<ResponseField name="has_active_subscription" type="boolean">
+  Read-only. Whether the contact has an active recurring subscription.
+</ResponseField>
+
+<ResponseField name="is_lybunt" type="boolean">
+  Read-only. Gave last year but not this year.
+</ResponseField>
+
+<ResponseField name="first_donation_at" type="string">
+  Read-only. ISO timestamp of the first donation.
+</ResponseField>
+
+<ResponseField name="last_donation_at" type="string">
+  Read-only. ISO timestamp of the most recent donation.
+</ResponseField>
+
+<ResponseField name="tags" type="string[]">
+  Read-only via this API — tags are managed in the CharityStack dashboard.
+</ResponseField>
+
+<ResponseField name="anonymousDonation" type="boolean">
+  Read-only. The contact chose to donate anonymously.
+</ResponseField>
+
+<Note>
+  The analytics fields above (`donor_status`, `has_active_subscription`,
+  `is_lybunt`, `first_donation_at`, `last_donation_at`, `tags`,
+  `anonymousDonation`) are computed by CharityStack. Sending any of them to
+  [Update Contact](/api/contacts/update) or
+  [Create Contact](/api/contacts/create) returns `400 validation_failed` —
+  they can never be edited through the public API.
+</Note>
 
 <ResponseField name="created_at" type="string">
   ISO 8601 timestamp of when the contact was created.

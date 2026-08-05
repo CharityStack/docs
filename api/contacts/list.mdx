@@ -32,6 +32,8 @@ GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts
   Filter results to contacts whose `emails` array contains this address.
 </ParamField>
 
+Each returned contact carries the same fields as [Get Contact](/api/contacts/get) — including the always-present derived consent enums (`emailConsent`, `smsConsent`, `communicationConsent`) and the read-only analytics fields (`donor_status`, `has_active_subscription`, `is_lybunt`, `tags`, `anonymousDonation`, `first_donation_at`/`last_donation_at`).
+
 ## Response
 
 <ResponseField name="contacts" type="Contact[]" required>

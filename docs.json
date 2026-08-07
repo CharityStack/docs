@@ -2,15 +2,23 @@
   "$schema": "https://mintlify.com/docs.json",
   "name": "CharityStack",
   "theme": "luma",
+  "favicon": "/favicon.png",
   "colors": {
     "primary": "#10B981",
     "light": "#D1FAE5",
     "dark": "#065F46"
   },
   "navbar": {
+    "links": [
+      {
+        "label": "Website",
+        "href": "https://www.charitystack.com"
+      }
+    ],
     "primary": {
-      "type": "github",
-      "href": "https://github.com/CharityStack"
+      "type": "button",
+      "label": "Dashboard",
+      "href": "https://www.charitystack.com/dashboard"
     }
   },
   "navigation": {

@@ -1,0 +1,144 @@
+---
+title: "PUT /v1/contacts/{id} — update a contact record"
+sidebarTitle: "Update Contact"
+description: "Update a contact's profile — name, organization, emails, phones, addresses — and email/SMS communication consent. Partial updates: only the fields you send are applied."
+---
+
+The Update Contact endpoint modifies an existing contact. It uses **partial-update semantics**: only the fields present in the request body are applied — except `firstName` and `lastName`, which are required on every request — and unknown fields are rejected with `400`. The contact must belong to your merchant account — attempting to update a contact owned by another merchant returns `403 Forbidden`.
+
+## Endpoint
+
+```
+PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts/{id}
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token using your API key. Format: `Bearer cs_live_your_key`
+</ParamField>
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the contact (UUID format).
+</ParamField>
+
+## Request body
+
+<ParamField body="firstName" type="string" required>
+  Contact's first name. Required on every request; non-blank.
+</ParamField>
+
+<ParamField body="lastName" type="string" required>
+  Contact's last name. Required on every request; non-blank.
+</ParamField>
+
+<ParamField body="organizationName" type="string">
+  Organization or company the contact belongs to.
+</ParamField>
+
+<ParamField body="emails" type="object[]">
+  The **desired active** email entries. Existing entries missing from this
+  array are soft-deleted (retained internally for history), and previously
+  deleted entries stay deleted. Omit the array entirely to leave emails
+  untouched.
+  <Expandable title="email entry">
+    <ParamField body="email" type="string" required>The email address.</ParamField>
+    <ParamField body="is_primary" type="boolean">Exactly one entry may be primary; when none is marked, the first becomes primary.</ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="phones" type="object[]">
+  The desired active phone entries. Same array semantics as `emails`. Values
+  are normalized to E.164 (e.g. `+34613628904`); bare national numbers are
+  treated as US. Unparseable numbers return `400`.
+  <Expandable title="phone entry">
+    <ParamField body="value" type="string" required>The phone number.</ParamField>
+    <ParamField body="is_primary" type="boolean">Exactly one entry may be primary.</ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="addresses" type="object[]">
+  The desired active address entries. Same array semantics as `emails`.
+  <Expandable title="address entry">
+    <ParamField body="line1" type="string">Street line 1.</ParamField>
+    <ParamField body="line2" type="string">Street line 2.</ParamField>
+    <ParamField body="city" type="string">City.</ParamField>
+    <ParamField body="region" type="string">State / region.</ParamField>
+    <ParamField body="postal" type="string">Postal code.</ParamField>
+    <ParamField body="country" type="string">Country.</ParamField>
+    <ParamField body="is_primary" type="boolean">Exactly one entry may be primary.</ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="emailConsent" type="string">
+  `SUBSCRIBED` or `UNSUBSCRIBED`. Changes propagate to the marketing platform
+  when your organization has marketing enabled (see `meta.marketingSync` in
+  the response).
+</ParamField>
+
+<ParamField body="smsConsent" type="string">
+  `SUBSCRIBED` or `UNSUBSCRIBED`. A contact who opted out of SMS by texting
+  STOP cannot be re-subscribed through the API (`409 sms_carrier_locked`) —
+  that requires the verified-START flow in the CharityStack dashboard.
+</ParamField>
+
+## Response
+
+On success returns the updated Contact object:
+
+<ResponseField name="contact" type="object" required>
+  The full updated contact record, in the same shape as
+  [Get Contact](/api/contacts/get).
+</ResponseField>
+
+<ResponseField name="meta.marketingSync" type="object">
+  Present only when a consent change was requested. Per-channel outcome of
+  the marketing sync: `synced`, `skipped_marketing_not_enabled`,
+  `skipped_no_marketing_link`, or `failed`. A skipped/failed sync never
+  discards the consent change itself.
+</ResponseField>
+
+## Errors
+
+| Status | Code | Meaning |
+|--------|------|---------|
+| 400 | `validation_failed` | Missing/blank name, unknown field, invalid email/phone, duplicate entries, or more than one primary. |
+| 401 | — | Missing or invalid API key. |
+| 403 | — | Contact belongs to a different merchant account. |
+| 404 | — | Contact not found. |
+| 409 | `email_taken` | An email in the request already belongs to another of your contacts. The response includes `existingContactID`. |
+| 409 | `sms_carrier_locked` | The contact texted STOP; SMS re-subscribe requires the dashboard's verified-START flow. |
+
+## Example — update name and add an email
+
+```bash
+curl -X PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts/contact_123 \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Ali",
+    "lastName": "Ahmed",
+    "emails": [
+      {"email": "ali@example.com", "is_primary": true},
+      {"email": "ali.work@example.com"}
+    ]
+  }'
+```
+
+## Example — unsubscribe from email updates
+
+```bash
+curl -X PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts/contact_123 \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{"firstName": "Ali", "lastName": "Ahmed", "emailConsent": "UNSUBSCRIBED"}'
+```
+
+<Note>
+  In rare cases a slow update can return a gateway `504` while the update
+  still completes server-side. The request body is a declarative desired
+  state, so retrying the same `PUT` is safe and converges. Successful updates
+  emit the `contact.updated` webhook event.
+</Note>

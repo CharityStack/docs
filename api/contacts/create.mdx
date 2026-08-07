@@ -1,10 +1,10 @@
 ---
-title: "POST /v1/contacts — create a new donor contact"
+title: "POST /v1/contacts — create a contact record"
 sidebarTitle: "Create Contact"
-description: "Add a donor contact to your CharityStack account with name, email, phone, and address fields. Returns 409 Conflict if the email or phone is already registered."
+description: "Add a contact to your CharityStack account with name, emails, phones, addresses, and communication consent. Returns 409 Conflict if an email already belongs to another of your contacts."
 ---
 
-The Create Contact endpoint adds a new donor record to your CharityStack account. You must provide `firstName` and `lastName`. All other fields — emails, phones, addresses, and organization name — are optional but recommended for complete records. The API enforces uniqueness per merchant: if a contact with the same primary email or primary phone already exists, the request returns `409 Conflict`.
+The Create Contact endpoint adds a new contact record to your CharityStack account. `firstName` and `lastName` are required; all other fields are optional. Email uniqueness is enforced per organization — if an email in the request already belongs to another of your contacts, the request returns `409 email_taken` with the existing contact's ID.
 
 ## Endpoint
 
@@ -21,159 +21,89 @@ POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts
 ## Request body
 
 <ParamField body="firstName" type="string" required>
-  Contact's first name.
+  Contact's first name. Non-blank.
 </ParamField>
 
 <ParamField body="lastName" type="string" required>
-  Contact's last name.
+  Contact's last name. Non-blank.
 </ParamField>
 
 <ParamField body="organizationName" type="string">
-  Organization or company name.
+  Organization or company the contact belongs to.
 </ParamField>
 
 <ParamField body="emails" type="object[]">
-  List of email address objects. At least one email is strongly recommended.
-
-  <Expandable title="email object fields">
-    <ParamField body="value" type="string" required>
-      A valid email address.
-    </ParamField>
-    <ParamField body="is_primary" type="boolean">
-      Mark this as the primary email. Defaults to `false`. Only one email should be marked primary.
-    </ParamField>
+  Email entries. Duplicates (case-insensitive) are rejected.
+  <Expandable title="email entry">
+    <ParamField body="email" type="string" required>The email address.</ParamField>
+    <ParamField body="is_primary" type="boolean">Exactly one entry may be primary; when none is marked, the first becomes primary.</ParamField>
   </Expandable>
 </ParamField>
 
 <ParamField body="phones" type="object[]">
-  List of phone number objects.
-
-  <Expandable title="phone object fields">
-    <ParamField body="value" type="string" required>
-      Phone number string. Non-digit characters are stripped automatically.
-    </ParamField>
-    <ParamField body="is_primary" type="boolean">
-      Mark this as the primary phone number. Defaults to `false`.
-    </ParamField>
+  Phone entries. Values are normalized to E.164 (e.g. `+34613628904`); bare
+  national numbers are treated as US. Unparseable numbers return `400`.
+  <Expandable title="phone entry">
+    <ParamField body="value" type="string" required>The phone number.</ParamField>
+    <ParamField body="is_primary" type="boolean">Exactly one entry may be primary.</ParamField>
   </Expandable>
 </ParamField>
 
 <ParamField body="addresses" type="object[]">
-  List of mailing address objects.
-
-  <Expandable title="address object fields">
-    <ParamField body="line1" type="string">Street address line 1.</ParamField>
-    <ParamField body="line2" type="string">Street address line 2 (apartment, suite, etc.).</ParamField>
+  Address entries.
+  <Expandable title="address entry">
+    <ParamField body="line1" type="string">Street line 1.</ParamField>
+    <ParamField body="line2" type="string">Street line 2.</ParamField>
     <ParamField body="city" type="string">City.</ParamField>
-    <ParamField body="region" type="string">State or region code (e.g., `MA`).</ParamField>
-    <ParamField body="postal" type="string">Postal or ZIP code.</ParamField>
-    <ParamField body="country" type="string">Country name (e.g., `United States`).</ParamField>
-    <ParamField body="is_primary" type="boolean">Mark this as the primary address.</ParamField>
+    <ParamField body="region" type="string">State / region.</ParamField>
+    <ParamField body="postal" type="string">Postal code.</ParamField>
+    <ParamField body="country" type="string">Country.</ParamField>
+    <ParamField body="is_primary" type="boolean">Exactly one entry may be primary.</ParamField>
   </Expandable>
+</ParamField>
+
+<ParamField body="emailConsent" type="string">
+  `SUBSCRIBED` or `UNSUBSCRIBED`. Omit to use the creation default:
+  `SUBSCRIBED` (email is an opt-out regime).
+</ParamField>
+
+<ParamField body="smsConsent" type="string">
+  `SUBSCRIBED` or `UNSUBSCRIBED`. Omit to use the creation default:
+  `NEVER_SUBSCRIBED` (SMS is an opt-in regime — only set `SUBSCRIBED` when
+  you have collected explicit SMS consent).
 </ParamField>
 
 ## Response
 
-On success the API returns `201 Created` with the full contact object and a confirmation message.
+On success returns `201` with the created contact:
 
 <ResponseField name="contact" type="object" required>
-  The newly created contact record.
-
-  <Expandable title="contact object fields">
-    <ResponseField name="id" type="string">Unique contact identifier (UUID).</ResponseField>
-    <ResponseField name="firstName" type="string">First name.</ResponseField>
-    <ResponseField name="lastName" type="string">Last name.</ResponseField>
-    <ResponseField name="fullName" type="string">Combined full name.</ResponseField>
-    <ResponseField name="organizationName" type="string">Organization name.</ResponseField>
-    <ResponseField name="emails" type="object[]">Array of email objects.</ResponseField>
-    <ResponseField name="phones" type="object[]">Array of phone objects.</ResponseField>
-    <ResponseField name="addresses" type="object[]">Array of address objects.</ResponseField>
-    <ResponseField name="totalTransactionCount" type="number">Initialized to `0`.</ResponseField>
-    <ResponseField name="totalTransactionValue" type="number">Initialized to `0`.</ResponseField>
-    <ResponseField name="created_at" type="string">ISO 8601 creation timestamp.</ResponseField>
-    <ResponseField name="updated_at" type="string">ISO 8601 last-updated timestamp.</ResponseField>
-  </Expandable>
+  The full created contact record, in the same shape as
+  [Get Contact](/api/contacts/get) — including its generated `id`.
 </ResponseField>
 
-<ResponseField name="message" type="string">
-  Confirmation message: `"Contact created successfully"`.
-</ResponseField>
+## Errors
 
-## Status codes
-
-| Code | Description |
-|------|-------------|
-| `201` | Contact created successfully. |
-| `400` | Missing required fields or invalid email format. |
-| `401` | Missing or invalid API key. |
-| `409` | A contact with this email or phone already exists for your merchant. |
+| Status | Code | Meaning |
+|--------|------|---------|
+| 400 | `validation_failed` | Missing/blank name, unknown field, invalid email/phone, duplicate entries, or more than one primary. |
+| 401 | — | Missing or invalid API key. |
+| 409 | `email_taken` | An email in the request already belongs to another of your contacts. The response includes `existingContactID`. |
 
 ## Example
 
-```bash cURL
+```bash
 curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts \
   -H "Authorization: Bearer cs_live_your_key" \
   -H "Content-Type: application/json" \
   -d '{
-    "firstName": "Jane",
-    "lastName": "Smith",
-    "organizationName": "Smith Foundation",
-    "emails": [
-      { "value": "jane@smithfoundation.org", "is_primary": true }
-    ],
-    "phones": [
-      { "value": "+1 617-555-0101", "is_primary": true }
-    ],
-    "addresses": [
-      {
-        "line1": "456 Park Ave",
-        "line2": "",
-        "city": "Boston",
-        "region": "MA",
-        "postal": "02101",
-        "country": "United States",
-        "is_primary": true
-      }
-    ]
+    "firstName": "Ali",
+    "lastName": "Ahmed",
+    "emails": [{"email": "ali@example.com", "is_primary": true}],
+    "phones": [{"value": "+34613628904"}]
   }'
 ```
 
-**201 response**
-
-```json
-{
-  "contact": {
-    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "firstName": "Jane",
-    "lastName": "Smith",
-    "fullName": "Jane Smith",
-    "organizationName": "Smith Foundation",
-    "emails": [
-      { "value": "jane@smithfoundation.org", "is_primary": true }
-    ],
-    "phones": [
-      { "value": "16175550101", "is_primary": true }
-    ],
-    "addresses": [
-      {
-        "line1": "456 Park Ave",
-        "line2": "",
-        "city": "Boston",
-        "region": "MA",
-        "postal": "02101",
-        "country": "United States",
-        "is_primary": true
-      }
-    ],
-    "totalTransactionCount": 0,
-    "totalTransactionValue": 0,
-    "created_at": "2025-04-28T12:00:00.000000",
-    "updated_at": "2025-04-28T12:00:00.000000"
-  },
-  "message": "Contact created successfully"
-}
-```
-
 <Note>
-  Phone numbers are normalized automatically. The value `+1 617-555-0101` is stored as `16175550101`. When filtering by phone, use the cleaned digit-only format.
+  Successful creates emit the `contact.created` webhook event.
 </Note>

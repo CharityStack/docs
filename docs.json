@@ -76,7 +76,8 @@
             "pages": [
               "api/contacts/list",
               "api/contacts/get",
-              "api/contacts/create"
+              "api/contacts/create",
+              "api/contacts/update"
             ]
           },
           {

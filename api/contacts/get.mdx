@@ -1,10 +1,12 @@
 ---
 title: "GET /v1/contacts/{id} — retrieve a contact record"
 sidebarTitle: "Get Contact"
-description: "Fetch a single contact by its unique ID, returning all stored fields including emails, phones, addresses, and lifetime giving totals."
+description: "Fetch a single contact by its unique ID, returning its name, emails, phones, addresses, consent state, and lifetime giving totals."
 ---
 
-The Get Contact endpoint retrieves a single contact record by its unique identifier. The contact must belong to your merchant account — attempting to fetch a contact owned by another merchant returns `403 Forbidden`. Use [List Contacts](/api/contacts/list) to discover contact IDs.
+The Get Contact endpoint retrieves a single contact by its unique identifier. The contact must belong to your organization — fetching one owned by another organization returns `403 Forbidden`. Use [List Contacts](/api/contacts/list) to discover contact IDs.
+
+The fields below are the **complete** public contact object. CharityStack stores additional internal fields on a contact for its own bookkeeping; those are deliberately not part of this API and will never appear in a response. New fields may be **added** here over time, so parse defensively and ignore anything you do not recognize.
 
 ## Endpoint
 
@@ -44,15 +46,17 @@ On success the endpoint returns a single Contact object directly (not wrapped in
   Full name derived from `firstName` and `lastName`.
 </ResponseField>
 
-<ResponseField name="organizationName" type="string">
-  Organization or company name, if provided.
+<ResponseField name="email" type="string">
+  The contact's primary email address, for convenience. `emails` is
+  authoritative.
 </ResponseField>
 
 <ResponseField name="emails" type="object[]">
   List of email address objects.
   <Expandable title="email object">
-    <ResponseField name="email" type="string">The email address.</ResponseField>
-    <ResponseField name="is_primary" type="boolean">Whether this is the primary email.</ResponseField>
+    <ResponseField name="value" type="string">The email address.</ResponseField>
+    <ResponseField name="isPrimary" type="boolean">Whether this is the primary email.</ResponseField>
+    <ResponseField name="isVerified" type="boolean">Whether the address has been verified.</ResponseField>
   </Expandable>
 </ResponseField>
 
@@ -60,7 +64,7 @@ On success the endpoint returns a single Contact object directly (not wrapped in
   List of phone number objects.
   <Expandable title="phone object">
     <ResponseField name="value" type="string">The phone number (E.164, e.g. `+34613628904`; legacy rows may carry older formats).</ResponseField>
-    <ResponseField name="is_primary" type="boolean">Whether this is the primary phone.</ResponseField>
+    <ResponseField name="isPrimary" type="boolean">Whether this is the primary phone.</ResponseField>
   </Expandable>
 </ResponseField>
 
@@ -73,7 +77,7 @@ On success the endpoint returns a single Contact object directly (not wrapped in
     <ResponseField name="region" type="string">State or region code (e.g., `MA`).</ResponseField>
     <ResponseField name="postal" type="string">Postal or ZIP code.</ResponseField>
     <ResponseField name="country" type="string">Country name.</ResponseField>
-    <ResponseField name="is_primary" type="boolean">Whether this is the primary address.</ResponseField>
+    <ResponseField name="isPrimary" type="boolean">Whether this is the primary address.</ResponseField>
   </Expandable>
 </ResponseField>
 
@@ -99,51 +103,37 @@ On success the endpoint returns a single Contact object directly (not wrapped in
   Master consent flag, derived alongside the channel enums.
 </ResponseField>
 
-<ResponseField name="donor_status" type="string">
-  Read-only. Computed giving status — e.g. `new_donor`, `repeat_donor`,
-  `active_recurring`, `churned_recurring`.
-</ResponseField>
-
-<ResponseField name="has_active_subscription" type="boolean">
+<ResponseField name="hasActiveSubscription" type="boolean">
   Read-only. Whether the contact has an active recurring subscription.
 </ResponseField>
 
-<ResponseField name="is_lybunt" type="boolean">
-  Read-only. Gave last year but not this year.
+<ResponseField name="firstDonationAt" type="string">
+  Read-only. ISO timestamp of the first donation. Absent if they have never
+  donated.
 </ResponseField>
 
-<ResponseField name="first_donation_at" type="string">
-  Read-only. ISO timestamp of the first donation.
-</ResponseField>
-
-<ResponseField name="last_donation_at" type="string">
+<ResponseField name="lastDonationAt" type="string">
   Read-only. ISO timestamp of the most recent donation.
 </ResponseField>
 
-<ResponseField name="tags" type="string[]">
-  Read-only via this API — tags are managed in the CharityStack dashboard.
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of when the contact was created. **Absent for contacts
+  created before CharityStack began recording this**, which is most historical
+  contacts — treat it as optional.
 </ResponseField>
 
-<ResponseField name="anonymousDonation" type="boolean">
-  Read-only. The contact chose to donate anonymously.
+<ResponseField name="updatedAt" type="string">
+  ISO 8601 timestamp of the most recent update. Always present.
 </ResponseField>
 
 <Note>
-  The analytics fields above (`donor_status`, `has_active_subscription`,
-  `is_lybunt`, `first_donation_at`, `last_donation_at`, `tags`,
-  `anonymousDonation`) are computed by CharityStack. Sending any of them to
+  The giving fields (`totalTransactionValue`, `totalTransactionCount`,
+  `hasActiveSubscription`, `firstDonationAt`, `lastDonationAt`) are computed by
+  CharityStack. Sending any of them to
   [Update Contact](/api/contacts/update) or
   [Create Contact](/api/contacts/create) returns `400 validation_failed` —
   they can never be edited through the public API.
 </Note>
-
-<ResponseField name="created_at" type="string">
-  ISO 8601 timestamp of when the contact was created.
-</ResponseField>
-
-<ResponseField name="updated_at" type="string">
-  ISO 8601 timestamp of the most recent update.
-</ResponseField>
 
 ## Status codes
 
@@ -152,7 +142,7 @@ On success the endpoint returns a single Contact object directly (not wrapped in
 | `200` | Contact returned successfully. |
 | `401` | Missing or invalid API key. |
 | `403` | Contact belongs to a different merchant. |
-| `404` | No contact found with the given ID. |
+| `404` | No contact found with the given ID — also returned for a contact that has been deleted or merged into another. |
 
 ## Example
 
@@ -169,12 +159,12 @@ curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts/a1b2c3d4
   "firstName": "Jane",
   "lastName": "Smith",
   "fullName": "Jane Smith",
-  "organizationName": "Smith Foundation",
+  "email": "jane@smithfoundation.org",
   "emails": [
-    { "value": "jane@smithfoundation.org", "is_primary": true }
+    { "value": "jane@smithfoundation.org", "isPrimary": true, "isVerified": true }
   ],
   "phones": [
-    { "value": "16175550101", "is_primary": true }
+    { "value": "+16175550101", "isPrimary": true }
   ],
   "addresses": [
     {
@@ -184,12 +174,18 @@ curl https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts/a1b2c3d4
       "region": "MA",
       "postal": "02101",
       "country": "United States",
-      "is_primary": true
+      "isPrimary": true
     }
   ],
+  "emailConsent": "SUBSCRIBED",
+  "smsConsent": "NEVER_SUBSCRIBED",
+  "communicationConsent": true,
   "totalTransactionCount": 12,
   "totalTransactionValue": 3250.00,
-  "created_at": "2024-03-15T10:22:00.000000",
-  "updated_at": "2025-01-08T14:05:33.000000"
+  "hasActiveSubscription": true,
+  "firstDonationAt": "2024-03-15T10:24:11.000000",
+  "lastDonationAt": "2025-01-02T09:14:52.000000",
+  "createdAt": "2024-03-15T10:22:00.000000",
+  "updatedAt": "2025-01-08T14:05:33.000000"
 }
 ```

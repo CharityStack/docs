@@ -32,7 +32,9 @@ GET https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts
   Filter results to contacts whose `emails` array contains this address.
 </ParamField>
 
-Each returned contact carries the same fields as [Get Contact](/api/contacts/get) — including the always-present derived consent enums (`emailConsent`, `smsConsent`, `communicationConsent`) and the read-only analytics fields (`donor_status`, `has_active_subscription`, `is_lybunt`, `tags`, `anonymousDonation`, `first_donation_at`/`last_donation_at`).
+Each returned contact carries the same fields as [Get Contact](/api/contacts/get) — including the always-present derived consent enums (`emailConsent`, `smsConsent`, `communicationConsent`) and the read-only giving fields (`hasActiveSubscription`, `firstDonationAt`, `lastDonationAt`, `totalTransactionCount`, `totalTransactionValue`).
+
+Contacts that have been deleted or merged into another contact are not listed.
 
 ## Response
 
@@ -61,7 +63,7 @@ Each returned contact carries the same fields as [Get Contact](/api/contacts/get
         <ResponseField name="email" type="string">
           The email address.
         </ResponseField>
-        <ResponseField name="is_primary" type="boolean">
+        <ResponseField name="isPrimary" type="boolean">
           Whether this is the contact's primary email.
         </ResponseField>
       </Expandable>
@@ -72,7 +74,7 @@ Each returned contact carries the same fields as [Get Contact](/api/contacts/get
         <ResponseField name="value" type="string">
           The phone number.
         </ResponseField>
-        <ResponseField name="is_primary" type="boolean">
+        <ResponseField name="isPrimary" type="boolean">
           Whether this is the contact's primary phone number.
         </ResponseField>
       </Expandable>
@@ -86,7 +88,7 @@ Each returned contact carries the same fields as [Get Contact](/api/contacts/get
         <ResponseField name="region" type="string">State or region code (e.g., `MA`).</ResponseField>
         <ResponseField name="postal" type="string">Postal or ZIP code.</ResponseField>
         <ResponseField name="country" type="string">Country name.</ResponseField>
-        <ResponseField name="is_primary" type="boolean">Whether this is the primary address.</ResponseField>
+        <ResponseField name="isPrimary" type="boolean">Whether this is the primary address.</ResponseField>
       </Expandable>
     </ResponseField>
     <ResponseField name="totalTransactionCount" type="number">
@@ -95,10 +97,10 @@ Each returned contact carries the same fields as [Get Contact](/api/contacts/get
     <ResponseField name="totalTransactionValue" type="number">
       Lifetime total transaction value in dollars.
     </ResponseField>
-    <ResponseField name="created_at" type="string">
+    <ResponseField name="createdAt" type="string">
       ISO 8601 timestamp of when the contact was created.
     </ResponseField>
-    <ResponseField name="updated_at" type="string">
+    <ResponseField name="updatedAt" type="string">
       ISO 8601 timestamp of the most recent update.
     </ResponseField>
   </Expandable>
@@ -144,10 +146,10 @@ curl "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts?limit=1
       "fullName": "Jane Smith",
       "organizationName": "Smith Foundation",
       "emails": [
-        { "value": "jane@smithfoundation.org", "is_primary": true }
+        { "value": "jane@smithfoundation.org", "isPrimary": true, "isVerified": true }
       ],
       "phones": [
-        { "value": "16175550101", "is_primary": true }
+        { "value": "+16175550101", "isPrimary": true }
       ],
       "addresses": [
         {
@@ -157,13 +159,13 @@ curl "https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts?limit=1
           "region": "MA",
           "postal": "02101",
           "country": "United States",
-          "is_primary": true
+          "isPrimary": true
         }
       ],
       "totalTransactionCount": 12,
       "totalTransactionValue": 3250.00,
-      "created_at": "2024-03-15T10:22:00.000000",
-      "updated_at": "2025-01-08T14:05:33.000000"
+      "createdAt": "2024-03-15T10:22:00.000000",
+      "updatedAt": "2025-01-08T14:05:33.000000"
     }
   ],
   "count": 1,

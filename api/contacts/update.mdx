@@ -18,6 +18,14 @@ PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts/{id}
   Bearer token using your API key. Format: `Bearer cs_live_your_key`
 </ParamField>
 
+<ParamField header="Idempotency-Key" type="string" required>
+  A unique string you generate for each distinct update. **Reuse the same key
+  when you retry** and you get the original result back instead of applying the
+  update twice. Required — a request without it is rejected with
+  `400 idempotency_key_required`. Same semantics as
+  [Create Contact](/api/contacts/create#retrying-safely).
+</ParamField>
+
 ## Path parameters
 
 <ParamField path="id" type="string" required>
@@ -105,11 +113,20 @@ On success returns the updated Contact object:
 | Status | Code | Meaning |
 |--------|------|---------|
 | 400 | `validation_failed` | Missing/blank name, unknown field, invalid email/phone, duplicate entries, or more than one primary. |
+| 400 | `idempotency_key_required` | The `Idempotency-Key` header was missing. |
 | 401 | — | Missing or invalid API key. |
 | 403 | — | Contact belongs to a different merchant account. |
-| 404 | — | Contact not found. |
+| 404 | — | Contact not found, or it has been deleted or merged into another contact. |
 | 409 | `email_taken` | An email in the request already belongs to another of your contacts. The response includes `existingContactID`. |
 | 409 | `sms_carrier_locked` | The contact texted STOP; SMS re-subscribe requires the dashboard's verified-START flow. |
+| 409 | `request_in_progress` | A request with this `Idempotency-Key` is still being processed. Retry shortly to receive the original result. |
+| 422 | `idempotency_key_reused` | This `Idempotency-Key` was already used with a **different** request body. Use a new key. |
+
+<Note>
+  A request rejected **before** the update is applied — a validation failure,
+  or `sms_carrier_locked` — does not consume the idempotency key. Fix the body
+  and retry with the same key.
+</Note>
 
 ## Example — update name and add an email
 

@@ -18,6 +18,13 @@ POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts
   Bearer token using your API key. Format: `Bearer cs_live_your_key`
 </ParamField>
 
+<ParamField header="Idempotency-Key" type="string" required>
+  A unique string you generate for each distinct contact you want to create.
+  **Reuse the same key when you retry** and you get the original contact back
+  instead of a duplicate. Required — a request without it is rejected with
+  `400 idempotency_key_required`. See [Retrying safely](#retrying-safely).
+</ParamField>
+
 ## Request body
 
 <ParamField body="firstName" type="string" required>
@@ -78,8 +85,8 @@ POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts
 On success returns `201` with the created contact:
 
 <ResponseField name="contact" type="object" required>
-  The full created contact record, in the same shape as
-  [Get Contact](/api/contacts/get) — including its generated `id`.
+  The created contact, in the same shape as [Get Contact](/api/contacts/get) —
+  including its generated `id`.
 </ResponseField>
 
 ## Errors
@@ -87,14 +94,18 @@ On success returns `201` with the created contact:
 | Status | Code | Meaning |
 |--------|------|---------|
 | 400 | `validation_failed` | Missing/blank name, unknown field, invalid email/phone, duplicate entries, or more than one primary. |
+| 400 | `idempotency_key_required` | The `Idempotency-Key` header was missing. |
 | 401 | — | Missing or invalid API key. |
 | 409 | `email_taken` | An email in the request already belongs to another of your contacts. The response includes `existingContactID`. |
+| 409 | `request_in_progress` | A request with this `Idempotency-Key` is still being processed. Retry shortly to receive the original result. |
+| 422 | `idempotency_key_reused` | This `Idempotency-Key` was already used with a **different** request body. Use a new key for a different contact. |
 
 ## Example
 
 ```bash
 curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts \
   -H "Authorization: Bearer cs_live_your_key" \
+  -H "Idempotency-Key: 7f3c1b90-2d4e-4a51-9f88-6c2b0d1e5a77" \
   -H "Content-Type: application/json" \
   -d '{
     "firstName": "Ali",
@@ -104,6 +115,42 @@ curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/contacts 
   }'
 ```
 
-<Note>
-  Successful creates emit the `contact.created` webhook event.
-</Note>
+## Retrying safely
+
+If a create times out, you cannot tell from the client whether the contact was
+written. Retrying blindly is how duplicate donors appear — and a duplicate
+cannot be undone: it splits giving history, doubles marketing sends, and needs
+a manual merge.
+
+The `Idempotency-Key` header solves this. Generate one key per contact you
+intend to create (a UUID works well), and send that same key on every retry of
+that request.
+
+<Steps>
+  <Step title="Send the create with a key you generated">
+    `Idempotency-Key: 7f3c1b90-2d4e-4a51-9f88-6c2b0d1e5a77`
+  </Step>
+  <Step title="If the request times out or fails, send it again — same key, same body">
+    Do not generate a new key. A new key means a new contact.
+  </Step>
+  <Step title="You get the original result back">
+    If the first attempt had already succeeded, the retry returns that same
+    contact with `201` and an `Idempotency-Replayed: true` response header. The
+    contact is not created twice.
+  </Step>
+</Steps>
+
+A few rules worth knowing:
+
+- **A replay returns the original response exactly**, including the original
+  contact `id`. Nothing is recomputed.
+- **Reusing a key with a different body is rejected** with `422
+  idempotency_key_reused`, rather than silently applying one of the two. That
+  is almost always a bug in the calling code.
+- **Keys are scoped to your organization**, so they can never collide with
+  another organization's.
+- **Keys are remembered for 24 hours.** After that the same key is treated as
+  new. Retries happen in seconds, so this only matters if you deliberately
+  replay an old request.
+- **A rejected request does not consume the key.** If your create fails
+  validation, fix the body and retry with the same key.

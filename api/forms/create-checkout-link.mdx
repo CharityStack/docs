@@ -157,6 +157,18 @@ Available when the form's `formType` is `EVENT`.
   Ticket name to pre-select, e.g. `"General Admission"`. Must match a configured ticket on the event form. Tickets are stored on the event's element record — fetch the form to see configured ticket names.
 </ParamField>
 
+<ParamField body="prefill.ticketQuantity" type="integer">
+  Number of seats the checkout opens with, from `1` to `50`. Requires `ticket`. When omitted, the link selects one ticket (or one group).
+
+  | Ticket type | What `ticketQuantity: N` selects |
+  | --- | --- |
+  | Individual ticket | N tickets. Rejected if fewer than N are still available. |
+  | Group ticket, variable size | One group of N seats. Must be within the ticket's minimum and maximum, and fit the seats still available. |
+  | Group ticket, fixed size | Not supported — returns `400`. The link always selects one full group. |
+
+  The buyer is charged for the selected quantity. They can still change it on the checkout page.
+</ParamField>
+
 ### Prefill — attendees (EVENT forms only)
 
 Available when the form's `formType` is `EVENT`. Pre-populates the built-in **First Name / Last Name / Email** fields on the **Attendee Info** step. These are distinct from the donor identity fields above: the donor is the purchaser, attendees are the people the tickets are for.
@@ -176,6 +188,10 @@ Available when the form's `formType` is `EVENT`. Pre-populates the built-in **Fi
 <Tip>
   Pair `attendees` with `ticket`. Setting `ticket` pre-selects the event's ticket so the buyer lands directly on a populated **Attendee Info** step — ideal for "register a known member" links where one attendee maps to one ticket.
 </Tip>
+
+<Warning>
+  When `ticket` is set, `attendees` can't be longer than the number of seats the link selects — one for an individual ticket unless you set `ticketQuantity`. A longer array returns `400`. To sell two seats to one buyer, send `"ticketQuantity": 2` with both attendees.
+</Warning>
 
 ### Prefill — UTM parameters
 
@@ -234,7 +250,7 @@ Available when the form's `formType` is `EVENT`. Pre-populates the built-in **Fi
 | Code | Description |
 | --- | --- |
 | `201` | Link created successfully. |
-| `400` | Validation error — invalid JSON, unknown prefill key, bad type, amount out of range, unknown frequency, fund not configured on this form, sponsorship/ticket mismatch with form type, overlay missing `overlayPath`, or organization missing `organizationBaseURLs`. |
+| `400` | Validation error — invalid JSON, unknown prefill key, bad type, amount out of range, unknown frequency, fund not configured on this form, sponsorship/ticket mismatch with form type, `ticketQuantity` out of range or above remaining inventory, more `attendees` than the link's seats, overlay missing `overlayPath`, or organization missing `organizationBaseURLs`. |
 | `401` | Missing or invalid API key. |
 | `403` | Form belongs to a different organization. |
 | `404` | No form found with the given ID. |
@@ -332,6 +348,27 @@ curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{fo
     }
   }'
 ```
+
+### Sell a fixed number of seats to one buyer
+
+```bash cURL
+curl -X POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/forms/{formID}/links \
+  -H "Authorization: Bearer cs_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Family registration — Khan",
+    "prefill": {
+      "ticket": "General Admission",
+      "ticketQuantity": 2,
+      "attendees": [
+        { "firstName": "Aisha", "lastName": "Khan", "email": "aisha@example.org" },
+        { "firstName": "Yusuf", "lastName": "Khan" }
+      ]
+    }
+  }'
+```
+
+The checkout opens with two tickets selected and both attendees filled in. The `donation.created` webhook reports `ticketMapping[0].numSold: 2`.
 
 ### Overlay destination on your own site
 

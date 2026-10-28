@@ -40,6 +40,10 @@ The following fields are returned by `GET /v1/subscriptions` and `GET /v1/subscr
   Each successful subscription charge creates a corresponding payment record. You can cross-reference subscriptions and payments using the donor's email address.
 </Note>
 
+<Note>
+  The Subscription object never includes the display-currency fields (`displayCurrency`, `displayAmount`, `fxRate`, `fxRateTableId`, `fxRateAsOf`) or `lastChargeFx`. For a donor who gives in a display currency, those arrive only on the `subscription.created`, `subscription.updated` and `subscription.cancelled` webhooks. See [Display-currency fields](/concepts/webhooks#display-currency-fields-multi-currency).
+</Note>
+
 ## What you can do
 
 The subscriptions API supports four categories of operations:
@@ -77,6 +81,8 @@ You can modify an active subscription by cancelling it, changing the recurring a
   <Tab title="Change the amount">
     Pass a new positive `amount` to update the recurring charge going forward.
 
+    Changing the amount also changes the subscription's display-currency fields on webhooks. See [Display currency and amount changes](#display-currency-and-amount-changes).
+
     ```bash
     curl -X PUT https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/subscriptions/sub_123 \
       -H "Authorization: Bearer cs_live_your_key_here" \
@@ -85,6 +91,17 @@ You can modify an active subscription by cancelling it, changing the recurring a
     ```
   </Tab>
 </Tabs>
+
+## Display currency and amount changes
+
+Nonprofits can let donors see amounts in a currency other than USD. This is display only; every charge, refund and payout stays in USD, and so does `amount`. The subscription record of such a donor carries the five display-currency fields and, after a renewal, `lastChargeFx`. They are sent on the `subscription.created`, `subscription.updated` and `subscription.cancelled` webhooks, never in `/v1/subscriptions` responses.
+
+When a subscription's charged total changes — in the dashboard, the donor portal or through `PUT /v1/subscriptions/{id}` — the same update:
+
+- **Removes the five top-level fields** (`displayCurrency`, `displayAmount`, `fxRate`, `fxRateTableId`, `fxRateAsOf`) from the subscription. The change arrives as the usual `subscription.updated` without them. No new event type is added.
+- **Keeps `lastChargeFx`** (and `lastChargeDonorForeignExchangeAt`). It describes a charge that already happened, so a `subscription.updated` can carry `lastChargeFx` without the five top-level fields.
+
+Field definitions, examples and the full rules are on the [webhooks page](/concepts/webhooks#display-currency-fields-multi-currency).
 
 ## Updating payment methods
 

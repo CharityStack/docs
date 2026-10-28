@@ -30,6 +30,10 @@ The `PUT /v1/subscriptions/{id}` endpoint lets you modify an existing subscripti
 
 On success the endpoint returns the updated Subscription object.
 
+<Note>
+  The response never includes the display-currency fields (`displayCurrency`, `displayAmount`, `fxRate`, `fxRateTableId`, `fxRateAsOf`) or `lastChargeFx`. Changing the amount removes the five from the subscription record, so the `subscription.updated` webhook for this change arrives without them; `lastChargeFx` is kept because it describes a charge that already happened. See [Display currency and amount changes](/concepts/subscriptions#display-currency-and-amount-changes).
+</Note>
+
 <ResponseField name="id" type="string" required>
   Unique identifier for the subscription.
 </ResponseField>

@@ -49,6 +49,10 @@ The following fields are returned by `GET /v1/payments` and `GET /v1/payments/{i
   For recurring donors, each individual charge creates its own payment record with `frequency` set to the subscription's cadence. Use the `frequency` field to distinguish subscription charges from one-time gifts.
 </Tip>
 
+<Note>
+  The Payment object never includes the display-currency fields (`displayCurrency`, `displayAmount`, `fxRate`, `fxRateTableId`, `fxRateAsOf`). For a donor who gave in a display currency, those arrive on the `donation.created` and `donation.updated` webhooks and on the deprecated `/v1/donations` endpoints. They are display only; every charge, refund and payout stays in USD, and so does `amount`. See [Display-currency fields](/concepts/webhooks#display-currency-fields-multi-currency).
+</Note>
+
 ## API endpoints
 
 <CardGroup cols={2}>
@@ -81,6 +85,8 @@ The `/v1/payments` endpoints return the same underlying data as `/v1/donations`,
 | `donationDate` | `date` |
 
 The fields `merchantName`, `tipAmount`, and `transactionID` are not present in the payment object and are not available through `/v1/payments`.
+
+The deprecated `/v1/donations` endpoints return the stored donation record, so a donation made with a display currency may also include the five optional display-only fields `displayCurrency`, `displayAmount`, `fxRate`, `fxRateTableId` and `fxRateAsOf` (all five or none). They never include `lastChargeFx`, which is sent only on subscription webhooks. `/v1/payments` does not return the five; read them from the `donation.*` webhooks instead. See [Display-currency fields](/concepts/webhooks#display-currency-fields-multi-currency).
 
 ### Migration steps
 

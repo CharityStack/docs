@@ -16,6 +16,10 @@ The `GET /v1/subscriptions/{id}` endpoint returns a single subscription record. 
 
 On success the endpoint returns a single Subscription object.
 
+<Note>
+  The Subscription object never includes the display-currency fields (`displayCurrency`, `displayAmount`, `fxRate`, `fxRateTableId`, `fxRateAsOf`) or `lastChargeFx`. They are display only (every charge, refund and payout stays in USD) and arrive on the `subscription.created`, `subscription.updated` and `subscription.cancelled` webhooks. See [Display-currency fields](/concepts/webhooks#display-currency-fields-multi-currency).
+</Note>
+
 <ResponseField name="id" type="string" required>
   Unique identifier for the subscription.
 </ResponseField>

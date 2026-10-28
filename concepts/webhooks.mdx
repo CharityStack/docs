@@ -42,6 +42,101 @@ Subscribe to any combination of the events below when you register a webhook.
   When a hosted payment method update link completes, CharityStack emits `subscription.payment_method_updated` and also emits `subscription.updated` for backward compatibility. The dedicated payment method event includes a safe summary and excludes provider identifiers.
 </Note>
 
+## Event payloads
+
+Every delivery is a JSON body with the same envelope. `data` is the stored record for the event.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Event identifier, for example `evt_1760280331123` |
+| `type` | string | Event type, for example `subscription.updated` |
+| `created` | integer | Unix timestamp (seconds) when the event was created |
+| `data` | object | The event's record: the stored donation record for `donation.*`; the stored subscription record for `subscription.created`, `subscription.updated` and `subscription.cancelled`; a fixed payment-method summary for `subscription.payment_method_updated` |
+
+```json
+{
+  "id": "evt_1760280331123",
+  "type": "subscription.updated",
+  "created": 1760280331,
+  "data": {
+    "displayCurrency": "GBP",
+    "displayAmount": 40,
+    "fxRate": 0.7583,
+    "fxRateTableId": "oxr-20261013T1400Z",
+    "fxRateAsOf": "2026-10-13T14:00:00Z"
+  }
+}
+```
+
+Only the multi-currency fields are shown in this example; the record's other fields are sent as stored.
+
+### Display-currency fields (multi-currency)
+
+Nonprofits can let donors see amounts in a currency other than USD. When a donor gives with a display currency, the donation record and, for a recurring gift, the subscription record store five extra fields. Webhooks send the stored record, so the `data` of these events **may** include them:
+
+- `donation.created` and `donation.updated`
+- `subscription.created`, `subscription.updated` and `subscription.cancelled`
+
+| Field | Type | Description | Example |
+|-------|------|-------------|---------|
+| `displayCurrency` | string | ISO 4217 code of the currency the donor saw. Never `USD` | `"GBP"` |
+| `displayAmount` | number | The amount the donor saw, in `displayCurrency`. On a subscription, the recurring total the donor saw | `40` |
+| `fxRate` | number | The USD → `displayCurrency` rate the amount was shown at | `0.7583` |
+| `fxRateTableId` | string | Identifier of the rate table the rate came from | `"oxr-20261013T1400Z"` |
+| `fxRateAsOf` | string | UTC time of that rate table (ISO 8601) | `"2026-10-13T14:00:00Z"` |
+
+```json
+"displayCurrency": "GBP",
+"displayAmount": 40,
+"fxRate": 0.7583,
+"fxRateTableId": "oxr-20261013T1400Z",
+"fxRateAsOf": "2026-10-13T14:00:00Z"
+```
+
+- **All five or none.** They appear only for nonprofits that turned on display currencies, and only on records whose donor gave with a display currency. Not every record of such a nonprofit carries them.
+- **Display only; every charge, refund and payout stays in USD.** So do `amount`, `grossAmount` and `totalCharged`. Do not use these fields for accounting.
+- **Amount changes remove them.** When a subscription's charged total changes (in the dashboard, the donor portal or `PUT /v1/subscriptions/{id}`), the same update removes all five from the subscription, and the change arrives as the usual `subscription.updated` without them. No new event type is added.
+- **`subscription.payment_method_updated` carries none of the five.** Its payload is a fixed list of payment-method fields.
+- **The REST objects do not change.** The [Payment](/concepts/payments#the-payment-object) and [Subscription](/concepts/subscriptions#the-subscription-object) objects (`/v1/payments`, `/v1/subscriptions`, and the `PUT /v1/subscriptions/{id}` response) never include these fields. The deprecated `/v1/donations` endpoints may, because they return the stored donation record.
+- **Number format.** `displayAmount` and `fxRate` are JSON numbers, never strings. A whole amount arrives without decimals (`40`, not `40.00`); otherwise as a decimal (`40.25`). `fxRate` may lose precision in parsers that read numbers as floats.
+- **Compatibility.** The change is additive. Consumers that reject unknown keys should allow these five, and the two last-renewal fields below.
+
+### Last renewal in the display currency
+
+For a recurring gift in a display currency, each renewal charge (in USD, as always) can also be shown to the donor in that currency. The subscription record keeps the most recent one that got a rate, and the `subscription.created`, `subscription.updated` and `subscription.cancelled` webhooks **may** carry it as one object, `lastChargeFx`:
+
+| Field | Type | Description | Example |
+|-------|------|-------------|---------|
+| `lastChargeFx` | object | Display-only view of the most recent renewal charge that got a rate. Same five keys, types and rules as the table above | see below |
+| `lastChargeFx.displayCurrency` | string | ISO 4217 code of the subscription's display currency | `"EUR"` |
+| `lastChargeFx.displayAmount` | number | That renewal's USD `totalCharged`, converted at the rate below | `48.75` |
+| `lastChargeFx.fxRate` | number | The USD → `displayCurrency` rate used for that renewal | `0.9182` |
+| `lastChargeFx.fxRateTableId` | string | Identifier of the rate table the rate came from | `"oxr-20261012T1400Z"` |
+| `lastChargeFx.fxRateAsOf` | string | UTC time of that rate table (ISO 8601) | `"2026-10-12T14:00:00Z"` |
+| `lastChargeDonorForeignExchangeAt` | string | UTC time of the renewal that `lastChargeFx` describes, as `YYYY-MM-DD HH:MM:SS.ffffff` (no `T`, no zone suffix) | `"2026-10-12 14:05:31.123456"` |
+
+```json
+"lastChargeFx": {
+  "displayCurrency": "EUR",
+  "displayAmount": 48.75,
+  "fxRate": 0.9182,
+  "fxRateTableId": "oxr-20261012T1400Z",
+  "fxRateAsOf": "2026-10-12T14:00:00Z"
+},
+"lastChargeDonorForeignExchangeAt": "2026-10-12 14:05:31.123456"
+```
+
+- **Display only; every charge, refund and payout stays in USD.** `lastChargeFx` is an estimate of what the donor saw for that renewal, not what was charged; do not use it for accounting.
+- **Complete or absent.** The object always has all five keys. It is left out when the subscription has no valid last-renewal snapshot, for example before the first renewal, or when a renewal could not get a current rate (then the previous renewal's object stays).
+- **When it changes.** A renewal that records a new `lastChargeFx` updates the subscription record, so it arrives as the usual `subscription.updated`. No new event type is added.
+- **Independent of the five.** `lastChargeFx` describes a charge that already happened, so it is **not** removed when the subscription's amount changes: a `subscription.updated` can carry `lastChargeFx` without the five top-level fields. `lastChargeDonorForeignExchangeAt` can appear on its own in the rare case the stored snapshot is not valid; ignore it when `lastChargeFx` is absent.
+- **Where it never appears.** Not on `subscription.payment_method_updated`, not on the Payment or Subscription REST objects, and not on donation webhooks or the deprecated `/v1/donations` endpoints (renewal snapshots are kept on the subscription record only).
+- **Retirement.** `lastChargeFx` and `lastChargeDonorForeignExchangeAt` belong to the same multi-currency display feature as the five fields. If that feature's fields are ever retired or renamed, these two go with them.
+
+<Tip>
+  Changing a subscription's amount through the API? See [how amount changes affect these fields](/concepts/subscriptions#display-currency-and-amount-changes).
+</Tip>
+
 ## Registering a webhook
 
 Call `POST /v1/webhooks` with a destination URL and the list of events you want to receive.

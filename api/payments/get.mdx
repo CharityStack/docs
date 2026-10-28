@@ -16,6 +16,10 @@ The `GET /v1/payments/{id}` endpoint returns a single payment record. You will r
 
 On success the endpoint returns a single Payment object.
 
+<Note>
+  The Payment object never includes the display-currency fields (`displayCurrency`, `displayAmount`, `fxRate`, `fxRateTableId`, `fxRateAsOf`). They are display only (every charge, refund and payout stays in USD) and arrive on the `donation.*` webhooks and the deprecated `/v1/donations` endpoints. See [Display-currency fields](/concepts/webhooks#display-currency-fields-multi-currency).
+</Note>
+
 <ResponseField name="paymentID" type="string" required>
   Unique identifier for the payment.
 </ResponseField>

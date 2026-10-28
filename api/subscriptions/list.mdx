@@ -22,6 +22,10 @@ The `GET /v1/subscriptions` endpoint returns recurring subscription records for 
 
 ## Response
 
+<Note>
+  The Subscription object never includes the display-currency fields (`displayCurrency`, `displayAmount`, `fxRate`, `fxRateTableId`, `fxRateAsOf`) or `lastChargeFx`. They are display only (every charge, refund and payout stays in USD) and arrive on the `subscription.created`, `subscription.updated` and `subscription.cancelled` webhooks. See [Display-currency fields](/concepts/webhooks#display-currency-fields-multi-currency).
+</Note>
+
 <ResponseField name="subscriptions" type="Subscription[]" required>
   Array of subscription objects for this page of results.
 

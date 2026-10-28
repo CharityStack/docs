@@ -53,6 +53,10 @@ POST https://0k90mc4jjj.execute-api.us-east-2.amazonaws.com/v1/webhooks
   Optional human-readable label to help identify this webhook. Useful when you manage multiple endpoints.
 </ParamField>
 
+<Note>
+  For donors who give in a display currency, the `donation.*` payloads and the `subscription.created`, `subscription.updated` and `subscription.cancelled` payloads may carry display-only currency fields (`displayCurrency`, `displayAmount`, `fxRate`, `fxRateTableId`, `fxRateAsOf`, and on subscriptions `lastChargeFx`). `subscription.payment_method_updated` never does. See [Event payloads](/concepts/webhooks#event-payloads).
+</Note>
+
 ## Response
 
 ### 201 — created
